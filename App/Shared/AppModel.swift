@@ -9,6 +9,7 @@ struct Toast: Identifiable {
 }
 
 enum Overlay: Equatable {
+    case licenses
     case palette
     case snooze
     case help

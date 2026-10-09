@@ -151,7 +151,7 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
         // real mail listens to nothing.
         guard Bootstrap.offline else { return }
         let keys = ["j", "k", "e", "s", "u", "c", "r", "a", "f", "h", "z", "x", "o", "enter", "escape", "tab", "palette", "search", "send", "type",
-                    "demoLeft", "demoRight", "style1", "style2", "style3", "lists", "face", "details", "scrollDown", "fling", "themeNext", "settings", "bigface", "discard", "drafts", "discardCompose", "replyDetails", "typeLong", "back"]
+                    "demoLeft", "demoRight", "style1", "style2", "style3", "lists", "face", "details", "scrollDown", "fling", "themeNext", "settings", "bigface", "discard", "drafts", "discardCompose", "replyDetails", "typeLong", "back", "licenses"]
         for key in keys {
             let name = "com.ahmedkhaleel.mach.key.\(key)" as CFString
             CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), nil, { _, _, name, _, _ in
@@ -201,6 +201,7 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
                 let index = Palette.all.firstIndex { $0 == Palettes.shared.current } ?? 0
                 model.setPalette(Palette.all[(index + 1) % Palette.all.count])
             case "settings": model.overlay = model.overlay == .accounts ? nil : .accounts
+            case "licenses": model.overlay = model.overlay == .licenses ? nil : .licenses
             case "details": model.web.webView.evaluateJavaScript("document.querySelector('.msg.open .to').click()", completionHandler: nil)
             case "face": model.web.webView.evaluateJavaScript("document.querySelector('.face').click()", completionHandler: nil)
             case "style1", "style2", "style3": UserDefaults.standard.set(Int(String(key.last!)) ?? 1, forKey: "swipeStyle")

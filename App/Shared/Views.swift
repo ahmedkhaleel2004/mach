@@ -849,6 +849,8 @@ struct AccountsView: View {
                         .font(.system(size: Theme.pt(12))).foregroundStyle(Theme.faint)
                         .padding(.horizontal, 14).padding(.bottom, 12)
                 }
+                Rectangle().fill(Theme.line).frame(height: 1)
+                AboutLinks(model: model, licenses: true).padding(.horizontal, 14).padding(.vertical, 10)
             }
         }
     }
@@ -932,6 +934,7 @@ struct OverlayLayer: View {
                     case .palette: PaletteView(model: model)
                     case .snooze: SnoozeView(model: model)
                     case .help: HelpView()
+                    case .licenses: LicensesView()
                     case .accounts: AccountsView(model: model)
                     case .more: MoreView(model: model)
                     case .profile: ProfileView(model: model)
@@ -956,26 +959,73 @@ struct WelcomeView: View {
             Text("Mach").font(.system(size: Theme.pt(34), weight: .bold)).foregroundStyle(Theme.text)
             Text("Fast, free, open-source mail for Gmail.").font(.system(size: Theme.pt(15))).foregroundStyle(Theme.dim)
             if hasClient {
-                Button(action: { model.signIn() }) {
-                    Text(model.signingIn ? "Waiting for Google…" : "Sign in with Google")
-                        .font(.system(size: Theme.pt(15), weight: .semibold))
-                        .foregroundStyle(Theme.background)
-                        .padding(.horizontal, 22)
-                        .padding(.vertical, 10)
-                        .background(Theme.accent, in: RoundedRectangle(cornerRadius: 8))
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 10)
+                Button(action: { model.signIn() }) { GoogleButton() }
+                    .buttonStyle(.plain)
+                    .padding(.top, 10)
+                Text("Waiting for Google…").font(.system(size: Theme.pt(13))).foregroundStyle(Theme.faint).opacity(model.signingIn ? 1 : 0)
             } else {
-                Text("This build has no Google sign-in key. Add OAuthClient.json as the README describes, then build again.")
+                #if os(iOS)
+                let missing = "This build has no Google sign-in key for an iPhone. Add an iOS client's OAuthClient.json as the README describes, then build again."
+                #else
+                let missing = "This build has no Google sign-in key. Add OAuthClient.json as the README describes, then build again."
+                #endif
+                Text(missing)
                     .font(.system(size: Theme.pt(13)))
                     .foregroundStyle(Theme.faint)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 360)
                     .padding(.top, 10)
             }
+            AboutLinks(model: model).padding(.top, 6)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.background)
+    }
+}
+
+/// The sign-in button, drawn to Google's branding rules (developers.google.com/identity/branding-guidelines):
+/// their own "G" untouched, their wording, and the colours of their light button whatever the app's theme is.
+struct GoogleButton: View {
+    var body: some View {
+        // Their measures for iOS: 16 to the left of the G, 12 between it and the words, 16 to the right.
+        // The picture carries one point of clear space around the G.
+        HStack(spacing: 11) {
+            Image("GoogleG").resizable().frame(width: 22, height: 22)
+            Text("Sign in with Google").font(.system(size: 14, weight: .medium)).foregroundStyle(Color(light: 0x1F1F1F, dark: 0x1F1F1F))
+        }
+        .padding(.leading, 15)
+        .padding(.trailing, 16)
+        .frame(height: 44)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color(light: 0x747775, dark: 0x747775), lineWidth: 1))
+        .contentShape(Rectangle())
+    }
+}
+
+/// The privacy policy and a way to reach support, where Apple and Google both want them: on the sign-in screen
+/// and in settings. Kept quiet.
+struct AboutLinks: View {
+    let model: AppModel
+    var licenses = false
+
+    static let privacy = URL(string: "https://mach.ahmedkhaleel.com/privacy")!
+    static let support = URL(string: "mailto:ahmed@gitdiagram.com")!
+    static let site = URL(string: "https://mach.ahmedkhaleel.com")!
+
+    private func link(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(title, action: action).buttonStyle(.plain)
+    }
+
+    var body: some View {
+        HStack(spacing: 16) {
+            link("Privacy policy") { model.openURL(Self.privacy) }
+            link("Support") { model.openURL(Self.support) }
+            link("Website") { model.openURL(Self.site) }
+            if licenses { link("Acknowledgements") { model.overlay = .licenses } }
+        }
+        .font(.system(size: Theme.pt(12)))
+        .foregroundStyle(Theme.faint)
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
     }
 }
