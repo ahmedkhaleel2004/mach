@@ -211,7 +211,7 @@ final class AppModel {
         let now = Self.dayStamp()
         if now != today { today = now }
     }
-    private(set) var openThread: MailThread?
+    private(set) var openThread: MailThread? { didSet { noteInlineReply() } }
     private(set) var messages: [Message] = []
 
     var searchActive = false
@@ -224,7 +224,17 @@ final class AppModel {
     private var searchNext: [String: String] = [:]
     private var searchingMore = false
 
-    var compose: Draft?
+    var compose: Draft? { didSet { noteInlineReply() } }
+    /// True while the message being written is a reply to the open conversation. It is then written in the
+    /// conversation itself, as its next message, and the writing screen stays away. Kept as a value of its own, set
+    /// only when it changes, so the views that ask are not drawn again on every letter typed.
+    private(set) var inlineReply = false
+    /// Bumped to ask the reply being written in the conversation to take the keyboard.
+    var replyFocusRequest = 0
+    #if DEBUG || BENCH
+    /// Bumped by a test to open or close the recipient fields of that reply, as a click on its "to" line does.
+    var replyDetailsRequest = 0
+    #endif
     var overlay: Overlay?
     /// Whose picture is being shown up close.
     var profile: EmailAddress?
@@ -288,6 +298,18 @@ final class AppModel {
     func hasDraft(_ thread: MailThread) -> Bool {
         guard list != .drafts else { return false }
         return thread.labelIds.contains(SystemLabel.draft) || replyDrafts.contains { $0.accountId == thread.accountId && ($0.threadId == thread.id || $0.remoteThreadId == thread.id) }
+    }
+
+    private func noteInlineReply() {
+        var now = false
+        if let draft = compose, let thread = openThread, draft.threadId != nil, draft.accountId == thread.accountId {
+            now = draft.threadId == thread.id || draft.remoteThreadId == thread.id
+        }
+        guard now != inlineReply else { return }
+        inlineReply = now
+        // The page shows a waiting reply as the last message, with its buttons. While it is being written it is
+        // shown by the editor instead, in the same place.
+        if openThread != nil { render(keepScroll: true) }
     }
 
     /// The unsent reply to show at the end of the open conversation. Not while it is open for writing.
@@ -653,6 +675,8 @@ final class AppModel {
             if let draft = try? service.store.draft(String(thread.id.dropFirst(6))) { compose = draft }
             return
         }
+        // A reply being written in another conversation stays behind as a draft.
+        if inlineReply, openThread?.id != thread.id { closeCompose() }
         setCursor(thread.id)
         openThread = thread
         renderedSignature = ""
@@ -685,7 +709,7 @@ final class AppModel {
     /// threshold (or with a flick) finishes the slide, anything less drops it back. `endVelocity` is nil while
     /// the swipe is still going.
     func dragBack(_ distance: CGFloat, endVelocity: CGFloat?, width: CGFloat) {
-        guard openThread != nil, !sliding, compose == nil, overlay == nil else { return }
+        guard openThread != nil, !sliding, compose == nil || inlineReply, overlay == nil else { return }
         guard let endVelocity else {
             backDrag = max(0, distance)
             return
@@ -709,6 +733,8 @@ final class AppModel {
 
     func closeThread() {
         guard openThread != nil else { return }
+        // A reply being written in it is kept as a draft.
+        if inlineReply { closeCompose() }
         messagesTask?.cancel()
         openThread = nil
         messages = []
@@ -1355,8 +1381,11 @@ final class AppModel {
     }
 
     func startReply(all: Bool) {
+        // From the list the conversation is opened first: a reply is written in it, under the mail it answers.
+        if openThread == nil, let index = cursorIndex, !rows[index].id.hasPrefix("draft:") { show(rows[index]) }
         guard let message = sourceMessage(), let account = accounts.first(where: { $0.id == message.accountId }) else { return }
         overlay = nil
+        replyFocusRequest += 1
         // A reply already started on this conversation is picked up again, unless the conversation has moved on
         // since, or it was to one person and you now want everyone.
         finishDraftWrites()
@@ -1785,7 +1814,14 @@ final class AppModel {
             }
             return true
         }
-        if compose != nil { return handleWhileTyping(key) }
+        if compose != nil {
+            // The conversation has the keyboard (it was clicked) with a reply open under it: R and A go back to writing.
+            if inlineReply, !key.command, !key.control, ["r", "a"].contains(key.characters) {
+                replyFocusRequest += 1
+                return true
+            }
+            return handleWhileTyping(key)
+        }
         if key.control, let digit = Int(key.characters) {
             switchAccount(index: digit)
             return true

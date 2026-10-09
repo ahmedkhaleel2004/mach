@@ -18,6 +18,8 @@ html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); }
 body { font: 14px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; -webkit-text-size-adjust: 100%; overflow-wrap: anywhere; }
 #root { max-width: 860px; margin: 0 auto; padding: 18px 28px 120px; }
 body.compact #root { padding: 10px 14px 140px; }
+/* A reply is being written under the last message: the editor is drawn by the app over #space, which keeps its room. */
+body.replying #root, body.compact.replying #root { padding-bottom: 0; }
 h1 { font-size: 20px; line-height: 1.3; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.01em; }
 body.compact { font-size: 15px; }
 body.compact h1 { font-size: 19px; }
@@ -73,10 +75,13 @@ button:active { opacity: 0.6; }
 </head>
 <body>
 <div id="root"></div>
+<div id="space"></div>
 <script nonce="__NONCE__">
 (function () {
   "use strict";
   var root = document.getElementById("root");
+  var space = document.getElementById("space");
+  var reserved = 0;
   var current = null;
   // What the page holds for the open conversation, by message id. When the same conversation is drawn again (it was
   // marked read, a message arrived) only what changed is rebuilt: a body that is already here stays exactly as it
@@ -449,7 +454,24 @@ button:active { opacity: 0.6; }
     });
   }
 
+  // Tells the app where the last message ends, so the reply being written sits right under it.
+  function reportEnd() {
+    if (reserved) post({ type: "end", y: space.offsetTop, width: document.documentElement.clientWidth });
+  }
+  new ResizeObserver(reportEnd).observe(root);
+
   window.mach = {
+    // Keeps `height` clear below the last message for the reply being written there, or gives it back with 0.
+    reply: function (height) {
+      var first = !reserved && height > 0;
+      var atEnd = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
+      reserved = height;
+      document.body.classList.toggle("replying", height > 0);
+      space.style.height = height ? height + "px" : "";
+      // Starting a reply shows the end of the conversation; after that it stays there as the reply grows.
+      if (height && (first || atEnd)) window.scrollTo(0, document.documentElement.scrollHeight);
+      reportEnd();
+    },
     // `benchId` is only passed by benchmark builds.
     render: function (payload, benchId) {
       var started = benchId ? performance.now() : 0;

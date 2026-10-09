@@ -137,7 +137,7 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
         // real mail listens to nothing.
         guard Bootstrap.offline else { return }
         let keys = ["j", "k", "e", "s", "u", "c", "r", "a", "f", "h", "z", "x", "o", "enter", "escape", "tab", "palette", "search", "send", "type",
-                    "demoLeft", "demoRight", "style1", "style2", "style3", "lists", "face", "details", "bigface", "discard", "drafts", "discardCompose"]
+                    "demoLeft", "demoRight", "style1", "style2", "style3", "lists", "face", "details", "bigface", "discard", "drafts", "discardCompose", "replyDetails", "typeLong", "back"]
         for key in keys {
             let name = "com.ahmedkhaleel.mach.key.\(key)" as CFString
             CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), nil, { _, _, name, _, _ in
@@ -160,6 +160,9 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
                 model.compose?.to = "someone@example.com"
                 model.compose?.subject = "Hello from Mach"
                 model.compose?.body = "First line.\n\nSecond paragraph with a link https://example.com"
+            case "typeLong": model.compose?.body = (1...14).map { "Line \($0) of a longer reply, to see it grow." }.joined(separator: "\n")
+            case "replyDetails": model.replyDetailsRequest += 1
+            case "back": model.closeThread()
             case "send": model.sendCompose()
             case "lists": model.overlay = model.overlay == .lists ? nil : .lists
             case "bigface":
@@ -632,32 +635,46 @@ struct PhoneRoot: View {
             }
             .padding(.horizontal, 4)
             .frame(height: Theme.pt(50))
-            ThreadWebView(web: model.web)
-                .ignoresSafeArea(edges: .bottom)
-                .overlay(alignment: .bottom) {
-                    HStack(spacing: 10) {
-                        HStack(spacing: 8) {
-                            replyButton("Reply", icon: "arrowshape.turn.up.left") { model.startReply(all: false) }
-                            replyButton("Reply All", icon: "arrowshape.turn.up.left.2") { model.startReply(all: true) }
-                            replyButton("Forward", icon: "arrowshape.turn.up.right") { model.startForward() }
-                        }
-                        // The one thing you do to most mail, so it sits under the thumb: where Compose is on the list.
-                        Button(action: { model.markDone() }) {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: Theme.pt(20), weight: .bold))
-                                .foregroundStyle(Theme.background)
-                                .frame(width: 54, height: 54)
-                                .background(Theme.accent, in: Circle())
-                                .shadow(color: .black.opacity(0.25), radius: 8, y: 3)
-                        }
-                        .accessibilityLabel("Archive")
-                    }
-                    .padding(.leading, 14)
-                    .padding(.trailing, 18)
-                    .padding(.bottom, 18)
-                }
+            ZStack {
+                ThreadWebView(web: model.web)
+                    .ignoresSafeArea(edges: .bottom)
+                    .overlay(alignment: .bottom) { ThreadButtons(model: model) }
+                // Not over the web view itself, which runs on under the keyboard: this stops where the keyboard starts.
+                InlineReplyLayer(model: model)
+            }
         }
         .background(Theme.background)
+    }
+}
+
+/// Reply, Reply All, Forward and Archive, floating over the foot of an open conversation. A view of its own, and
+/// gone while a reply is being written there: its Send takes their place.
+private struct ThreadButtons: View {
+    let model: AppModel
+
+    var body: some View {
+        if !model.inlineReply {
+            HStack(spacing: 10) {
+                HStack(spacing: 8) {
+                    replyButton("Reply", icon: "arrowshape.turn.up.left") { model.startReply(all: false) }
+                    replyButton("Reply All", icon: "arrowshape.turn.up.left.2") { model.startReply(all: true) }
+                    replyButton("Forward", icon: "arrowshape.turn.up.right") { model.startForward() }
+                }
+                // The one thing you do to most mail, so it sits under the thumb: where Compose is on the list.
+                Button(action: { model.markDone() }) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: Theme.pt(20), weight: .bold))
+                        .foregroundStyle(Theme.background)
+                        .frame(width: 54, height: 54)
+                        .background(Theme.accent, in: Circle())
+                        .shadow(color: .black.opacity(0.25), radius: 8, y: 3)
+                }
+                .accessibilityLabel("Archive")
+            }
+            .padding(.leading, 14)
+            .padding(.trailing, 18)
+            .padding(.bottom, 18)
+        }
     }
 
     private func replyButton(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
@@ -986,7 +1003,7 @@ final class SlideController<Content: View>: UIViewController {
     }
 
     private func drag(_ distance: CGFloat, _ endVelocity: CGFloat?) {
-        guard open, !finishing, model.compose == nil, model.overlay == nil else { return }
+        guard open, !finishing, model.compose == nil || model.inlineReply, model.overlay == nil else { return }
         FullRate.keep()
         guard let endVelocity else {
             slid.transform = CGAffineTransform(translationX: max(0, distance), y: 0)

@@ -4,6 +4,16 @@ import QuickLookThumbnailing
 import SwiftUI
 import WebKit
 
+/// Where the conversation on the page ends, for the reply written under it. Only the reply's own view watches this.
+@MainActor
+@Observable
+final class ReplyPlace {
+    /// How far down the page the last message ends, in points. Nil until the page has said.
+    var end: CGFloat?
+    /// The width of the page's scroll bar, on a Mac set to always show one.
+    var gutter: CGFloat = 0
+}
+
 /// The single web view that shows whichever thread is open.
 ///
 /// It is created once at launch and kept warm, so opening a thread is one script call instead of a page load.
@@ -109,6 +119,19 @@ final class ThreadWeb: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         }
     }
     private var networkBlocked = false
+
+    let replyPlace = ReplyPlace()
+    /// The room the page is keeping clear below its last message, in points. Nil when no reply is being written.
+    private var reserved: CGFloat?
+
+    /// Keeps room clear at the foot of the conversation for the reply being written there (the editor is drawn
+    /// over it), or gives it back with nil. The page answers with where its last message ends.
+    func reserveReply(_ height: CGFloat?) {
+        guard height != reserved else { return }
+        if height == nil || reserved == nil { replyPlace.end = nil }
+        reserved = height
+        act("window.mach.reply(\(Double(height ?? 0) / webView.pageZoom))")
+    }
 
     private func run(_ script: String) {
         guard ready else {
@@ -247,9 +270,17 @@ final class ThreadWeb: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
                 reloading = false
                 pendingScript = nil
                 onReload?()
+                // The new page knows nothing of the room it was keeping for a reply.
+                if let reserved { act("window.mach.reply(\(Double(reserved) / webView.pageZoom))") }
             } else if let script = pendingScript {
                 pendingScript = nil
                 webView.evaluateJavaScript(script, completionHandler: nil)
+            }
+        case "end":
+            if reserved != nil, let y = body["y"] as? Double, let width = body["width"] as? Double {
+                let end = CGFloat(y * webView.pageZoom), gutter = max(0, webView.bounds.width - CGFloat(width * webView.pageZoom)).rounded()
+                if replyPlace.end != end { replyPlace.end = end }
+                if replyPlace.gutter != gutter { replyPlace.gutter = gutter }
             }
         case "link":
             if let url, ["http", "https", "mailto", "tel"].contains(url.scheme?.lowercased() ?? "") { onEvent?(.link(url)) }
