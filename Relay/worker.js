@@ -268,6 +268,30 @@ async function push(env, device, payload, collapseId, kept) {
   return !(response.status === 410 || reason === "BadDeviceToken" || reason === "Unregistered");
 }
 
+/// The number on the app's icon is the unread conversations in every inbox the phone holds. Each account's part of
+/// it (its count, and the phones it is on) is kept here, in the hub's own storage, so a push for one account can
+/// carry the total without asking Gmail about the others.
+async function badges(kept) {
+  if (!kept.badges) kept.badges = (await kept.storage.get("badges").catch(() => null)) || {};
+  return kept.badges;
+}
+
+function badgeFor(all, token) {
+  let total = 0;
+  for (const entry of Object.values(all)) if (entry.tokens.includes(token)) total += entry.unread;
+  return total;
+}
+
+/// Unread conversations in the account's inbox, or null when Gmail would not say.
+async function unreadCount(env, account) {
+  try {
+    const response = await gmail(env, account, "/labels/INBOX");
+    return response.ok ? Number((await response.json()).threadsUnread || 0) : null;
+  } catch {
+    return null;
+  }
+}
+
 /// The sender's Google profile picture, from the account's own contacts, so the banner can show a real face.
 /// The whole list is fetched once a day and kept; mail arriving in between costs nothing extra.
 // Kept in memory for ten minutes at a time, so a run of new mail reads and parses the (large) list once.
@@ -408,6 +432,11 @@ async function check(env, email, kept, notified) {
   if (latest !== account.historyId && !(account.watchExpiry > Date.now())) await announce(env, email);
   let sent = 0;
   let devices = account.devices;
+  // Anything that changed in the inbox (new mail, but also mail read or archived somewhere else) can change the
+  // number on the icon. Gmail is asked for it while the new messages are being fetched, not after.
+  const all = kept ? await badges(kept) : null;
+  const before = all?.[email];
+  const counting = all && devices.length && (latest !== account.historyId || !before) ? unreadCount(env, account) : null;
   // Every new message is asked for at the same moment; the pushes then go out in the order the mail arrived.
   const wanted = devices.length ? [...added].slice(-5) : [];
   // The list of contact pictures is read while Gmail is being asked, not after.
@@ -416,6 +445,9 @@ async function check(env, email, kept, notified) {
     const response = await gmail(env, account, `/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`);
     return response.ok ? response.json() : null;
   }));
+  const unread = counting ? await counting : null;
+  if (unread !== null) all[email] = { unread, tokens: devices.map((device) => device.token) };
+  const badged = (device) => (all?.[email] ? { badge: badgeFor(all, device.token) } : {});
   for (const [index, [id, threadId]] of wanted.entries()) {
     if (fetched[index].status === "rejected") throw fetched[index].reason;
     const message = fetched[index].value;
@@ -437,9 +469,18 @@ async function check(env, email, kept, notified) {
       senderPhoto: await photoFor(env, account, senderEmail(header(message, "from"))),
     };
     // All of this account's phones at once.
-    const reached = await Promise.all(devices.map((device) => push(env, device, { ...payload, avatars: device.avatars !== false }, id, kept)));
+    const reached = await Promise.all(devices.map((device) => push(env, device, { ...payload, aps: { ...payload.aps, ...badged(device) }, avatars: device.avatars !== false }, id, kept)));
     devices = devices.filter((_, position) => reached[position]);
     sent++;
+  }
+  if (unread !== null) {
+    // Nothing new to announce, but the count moved: the icon alone is corrected, silently.
+    if (!sent && before?.unread !== unread) {
+      const reached = await Promise.all(devices.map((device) => push(env, device, { aps: badged(device) }, "badge", kept)));
+      devices = devices.filter((_, position) => reached[position]);
+    }
+    all[email].tokens = devices.map((device) => device.token);
+    if (before?.unread !== unread || String(before?.tokens) !== String(all[email].tokens)) await kept.storage.put("badges", all).catch(() => {});
   }
   if (latest !== account.historyId || devices.length !== account.devices.length) {
     account.historyId = latest;
@@ -539,6 +580,16 @@ async function registerAccount(env, email, entry, kept) {
   }
   // Registration happens on every launch; only write when something is different.
   if (changed || needsWatch || before !== JSON.stringify(account.devices)) await saveAccount(env, account, kept);
+  if (kept) {
+    // The phone's badge counts this account from now on.
+    const all = await badges(kept);
+    const tokens = account.devices.map((device) => device.token);
+    if (!all[email] || String(all[email].tokens) !== String(tokens)) {
+      const unread = all[email]?.unread ?? (tokens.length ? await unreadCount(env, account) : null) ?? 0;
+      all[email] = { unread, tokens };
+      await kept.storage.put("badges", all).catch(() => {});
+    }
+  }
   return { email, instant: account.watchExpiry > Date.now() };
 }
 
@@ -548,6 +599,11 @@ async function forget(env, email, kept) {
   if (account) await gmail(env, account, "/stop", { method: "POST" }).catch(() => {});
   await env.STORE.delete(`account:${email}`);
   kept?.accounts.delete(email);
+  if (kept) {
+    const all = await badges(kept);
+    delete all[email];
+    await kept.storage.put("badges", all).catch(() => {});
+  }
   forgetToken(email);
   people.delete(email);
   await env.STORE.delete(`token:${email}`);

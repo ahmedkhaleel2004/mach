@@ -28,7 +28,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m1",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 1
      },
      "account": "me@example.com",
      "thread": "t-m1",
@@ -59,7 +60,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m1",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 1
      },
      "account": "me@example.com",
      "thread": "t-m1",
@@ -129,7 +131,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m1",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 1
      },
      "account": "me@example.com",
      "thread": "t-m1",
@@ -230,7 +233,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m1",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 1
      },
      "account": "me@example.com",
      "thread": "t-m1",
@@ -301,7 +305,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m1",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 4
      },
      "account": "me@example.com",
      "thread": "t-m1",
@@ -332,7 +337,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m1",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 4
      },
      "account": "me@example.com",
      "thread": "t-m1",
@@ -363,7 +369,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m2",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 4
      },
      "account": "me@example.com",
      "thread": "t-m2",
@@ -394,7 +401,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m2",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 4
      },
      "account": "me@example.com",
      "thread": "t-m2",
@@ -425,7 +433,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m6",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 4
      },
      "account": "me@example.com",
      "thread": "t-m6",
@@ -456,7 +465,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m6",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 4
      },
      "account": "me@example.com",
      "thread": "t-m6",
@@ -520,7 +530,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m3",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 7
      },
      "account": "me@example.com",
      "thread": "t-m3",
@@ -551,7 +562,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m4",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 7
      },
      "account": "me@example.com",
      "thread": "t-m4",
@@ -582,7 +594,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m5",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 7
      },
      "account": "me@example.com",
      "thread": "t-m5",
@@ -613,7 +626,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m6",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 7
      },
      "account": "me@example.com",
      "thread": "t-m6",
@@ -644,7 +658,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m7",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 7
      },
      "account": "me@example.com",
      "thread": "t-m7",
@@ -703,7 +718,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m2",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 2
      },
      "account": "me@example.com",
      "thread": "t-m2",
@@ -762,7 +778,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m1",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 2
      },
      "account": "me@example.com",
      "thread": "t-m1",
@@ -793,7 +810,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m1",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 2
      },
      "account": "me@example.com",
      "thread": "t-m1",
@@ -824,7 +842,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m1",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 2
      },
      "account": "me@example.com",
      "thread": "t-m1",
@@ -855,7 +874,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m2",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 2
      },
      "account": "me@example.com",
      "thread": "t-m2",
@@ -886,7 +906,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m2",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 2
      },
      "account": "me@example.com",
      "thread": "t-m2",
@@ -923,7 +944,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m3",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 3
      },
      "account": "me@example.com",
      "thread": "t-m3",
@@ -954,7 +976,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m3",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 3
      },
      "account": "me@example.com",
      "thread": "t-m3",
@@ -1058,7 +1081,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m1",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 1
      },
      "account": "me@example.com",
      "thread": "t-m1",
@@ -1095,7 +1119,8 @@
       "sound": "default",
       "thread-id": "me@work.example/t-w1",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 1
      },
      "account": "me@work.example",
      "thread": "t-w1",
@@ -1193,7 +1218,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m2",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 2
      },
      "account": "me@example.com",
      "thread": "t-m2",
@@ -1290,7 +1316,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m1",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 1
      },
      "account": "me@example.com",
      "thread": "t-m1",
@@ -1351,7 +1378,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m2",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 2
      },
      "account": "me@example.com",
      "thread": "t-m2",
@@ -1402,6 +1430,23 @@
  "found by the timer": {
   "seen": [
    {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "badge"
+    },
+    "body": {
+     "aps": {
+      "badge": 0
+     }
+    }
+   },
+   {
     "kind": "socket",
     "to": "mac",
     "email": "me@example.com",
@@ -1428,7 +1473,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m1",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 1
      },
      "account": "me@example.com",
      "thread": "t-m1",
@@ -1481,7 +1527,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m1",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 1
      },
      "account": "me@example.com",
      "thread": "t-m1",
@@ -1593,7 +1640,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m1",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 1
      },
      "account": "me@example.com",
      "thread": "t-m1",
@@ -1767,7 +1815,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m1",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 1
      },
      "account": "me@example.com",
      "thread": "t-m1",
@@ -1804,7 +1853,8 @@
       "sound": "default",
       "thread-id": "me@example.com/t-m2",
       "content-available": 1,
-      "mutable-content": 1
+      "mutable-content": 1,
+      "badge": 2
      },
      "account": "me@example.com",
      "thread": "t-m2",

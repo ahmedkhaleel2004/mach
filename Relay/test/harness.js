@@ -105,6 +105,10 @@ export function makeWorld({ apnsKey, latency = {} } = {}) {
         const message = box.messages.get(path.slice(10));
         return message ? answer(message) : answer({ error: { message: "not found" } }, 404);
       }
+      if (path === "/labels/INBOX") {
+        const unread = new Set([...box.messages.values()].filter((message) => message.labelIds.includes("INBOX") && message.labelIds.includes("UNREAD")).map((message) => message.threadId));
+        return answer({ id: "INBOX", threadsUnread: unread.size });
+      }
       if (path === "/labels" && (init.method || "GET") === "GET") return answer({ labels: box.labels });
       if (path.startsWith("/labels/") && init.method === "DELETE") {
         box.labels = box.labels.filter((label) => label.id !== path.slice(8));

@@ -51,7 +51,6 @@ struct MachApp: App {
             model.service.startPolling(every: 20)
             PhoneDelegate.register()
             PhoneDelegate.live?.start()
-            UNUserNotificationCenter.current().setBadgeCount(0)
         } else if value == .background {
             model.service.stopPolling()
             PhoneDelegate.live?.stop()
@@ -112,6 +111,16 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
         }
         model.accountRemoved = { PhoneDelegate.live?.unregister($0) }
         if !Bootstrap.offline { UIApplication.shared.registerForRemoteNotifications() }
+        // The number on the icon is the unread conversations in every inbox. Whenever the app runs (open, or woken
+        // by a push) it sets the number itself from what it holds; in between, the relay's pushes carry it.
+        if !Bootstrap.offline {
+            let store = model.service.store
+            Task {
+                for await counts in store.observeUnreadCounts() {
+                    try? await UNUserNotificationCenter.current().setBadgeCount(counts.values.reduce(0, +))
+                }
+            }
+        }
         // With a relay the banner comes from the push itself; without one the app announces what it finds.
         if PushRelay.current == nil { model.service.onNewMail = { notifier.announce($0) } }
         self.notifier = notifier

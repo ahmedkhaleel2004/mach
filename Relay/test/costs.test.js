@@ -23,7 +23,7 @@ test("a second mail costs no store reads, one hub call and one store write", asy
   const world = await running();
   world.deliver(ME, { id: "second" });
   await world.pubsub(ME);
-  expect(world.counts).toMatchObject({ kvGet: 0, kvPut: 1, fetchGmail: 2, fetchApns: 1, hubCalls: 1, sign: 0, fetchGoogleToken: 0 });
+  expect(world.counts).toMatchObject({ kvGet: 0, kvPut: 1, fetchGmail: 3, fetchApns: 1, hubCalls: 1, sign: 0, fetchGoogleToken: 0 });
   expect(pushed(world)).toEqual(["second"]);
 });
 
