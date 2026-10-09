@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support · Mach</title>
+<meta name="description" content="Help with Mach, the mail app for Gmail: contact the developer, report a bug, sign out, remove access, and why Google shows an unverified app warning for now.">
+<meta name="author" content="Ahmed Khaleel">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111114" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://mach.ahmedkhaleel.com/support">
+<link rel="icon" type="image/png" href="/assets/favicon.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="stylesheet" href="/s.css">
+<script src="/k.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="bar">
+  <div class="wrap">
+    <a class="brand" href="/"><img src="/assets/icon-64.png" width="26" height="26" alt="">Mach <small>by Ahmed Khaleel</small></a>
+    <nav class="nav" aria-label="Pages">
+      <a href="/privacy"><kbd>2</kbd>Privacy</a>
+      <a href="/terms"><kbd>3</kbd>Terms</a>
+      <a href="/support" aria-current="page"><kbd>4</kbd>Support</a>
+      <a class="src" href="https://github.com/ahmedkhaleel2004/mach"><kbd>g</kbd>Source</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main" class="wrap doc">
+  <aside aria-label="On this page">
+    <ol>
+      <li><a href="#reach"><i>01</i>Get help</a></li>
+      <li><a href="#faq"><i>02</i>Questions</a></li>
+    </ol>
+  </aside>
+
+  <article>
+    <h1>Support</h1>
+    <p class="meta">Mach, the mail app for Gmail on Mac and iPhone · Ahmed Khaleel</p>
+
+    <p class="short">One person makes Mach and answers the mail about it. Write to him, or open an issue where everyone can see it.</p>
+
+    <section id="reach">
+      <h2><i>01</i>Get help</h2>
+      <div class="contact">
+        <!--email_off--><a href="mailto:ahmed@gitdiagram.com"><b>ahmed@gitdiagram.com</b><span>For anything private: your account, a security problem, a commercial licence.</span></a><!--/email_off-->
+        <a href="https://github.com/ahmedkhaleel2004/mach/issues"><b>GitHub issues</b><span>For bugs and requests. Say which version, Mac or iPhone, and what you did. Never paste mail or tokens.</span></a>
+      </div>
+    </section>
+
+    <section id="faq" class="faq">
+      <h2><i>02</i>Questions</h2>
+
+      <h3>How do I sign out?</h3>
+      <p class="q">Open accounts and settings: on a Mac press <kbd>⌘</kbd> <kbd>,</kbd> or click the account name at the top; on iPhone tap the account button at the top of the list. Press "Sign out" beside the account. That deletes the account's mail from Mach and its sign-in from the device's keychain. Your mail at Google is untouched.</p>
+
+      <h3>How do I take away Mach's access to my Google account?</h3>
+      <p class="q">Go to <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>, choose Mach, and remove its access. It takes effect at once on every device. You can sign in again any time.</p>
+
+      <h3>Why does Google say it "hasn't verified this app"?</h3>
+      <p class="q">Google reviews every app that reads Gmail before it lets the public sign in without a warning. For a mail app that review includes a yearly outside security assessment and takes weeks to months. Mach has not finished it yet. Until it has, Google shows a warning before the usual permission screen; you can go on through "Advanced". The warning is about the review not being finished, not about anything Google found. What Mach does with the access is in the <a href="/privacy">privacy policy</a>, and the <a href="https://github.com/ahmedkhaleel2004/mach">source</a> is there to check it against.</p>
+
+      <h3>Why does the Mac download ask for a Google key of my own?</h3>
+      <p class="q">For the same reason. Until Google's review is finished, the public download ships without a sign-in key, and you make one in your own Google Cloud project: about five minutes, once. The steps are in the <a href="https://github.com/ahmedkhaleel2004/mach#install">README</a>. One-click sign-in for everyone comes with the review.</p>
+
+      <h3>Where is my mail kept? Can the developer see it?</h3>
+      <p class="q">On your device, in Mach's own database, and at Google where it always was. Mach talks to Google directly. There is no Mach server, so the developer has no way to see your mail, your contacts or your sign-in.</p>
+
+      <h3>How do I remove everything Mach stored?</h3>
+      <p class="q">Sign out of each account, then delete the app. On iPhone that removes everything. On a Mac a few folders stay behind in your Library; the <a href="/privacy#remove">privacy policy</a> lists them.</p>
+
+      <h3>Is there an iPhone app?</h3>
+      <p class="q">It exists and is on its way to TestFlight. Today it is built from source with Xcode; the <a href="https://github.com/ahmedkhaleel2004/mach#iphone">README</a> has the steps.</p>
+    </section>
+  </article>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <a class="brand" href="/"><img src="/assets/icon-64.png" width="26" height="26" alt="">Mach</a>
+    <div>
+      <nav aria-label="Footer">
+        <a href="/privacy">Privacy policy</a>
+        <a href="/terms">Terms</a>
+        <a href="/support">Support</a>
+        <a href="https://github.com/ahmedkhaleel2004/mach">Source on GitHub</a>
+        <!--email_off--><a href="mailto:ahmed@gitdiagram.com">ahmed@gitdiagram.com</a><!--/email_off-->
+      </nav>
+      <p>Mach is made and published by Ahmed Khaleel, an independent developer in Ontario, Canada.</p>
+      <p class="tm">Gmail is a trademark of Google LLC. Mach is not affiliated with, endorsed by or sponsored by Google.</p>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

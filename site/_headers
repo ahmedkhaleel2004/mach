@@ -1,0 +1,13 @@
+# no-transform also stops Cloudflare adding its analytics beacon to these pages: the site promises none.
+/*
+  Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: interest-cohort=(), browsing-topics=(), camera=(), microphone=(), geolocation=()
+  Strict-Transport-Security: max-age=31536000
+  Cache-Control: public, max-age=0, must-revalidate, no-transform
+
+/assets/*
+  ! Cache-Control
+  Cache-Control: public, max-age=604800, no-transform

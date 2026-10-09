@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mach: the instant mail app for Gmail, on Mac and iPhone</title>
+<meta name="description" content="Mach is a free, open-source, very fast native Gmail client for Mac and iPhone by Ahmed Khaleel. Your mail stays on your device; the app talks only to Google.">
+<meta name="author" content="Ahmed Khaleel">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111114" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://mach.ahmedkhaleel.com/">
+<link rel="icon" type="image/png" href="/assets/favicon.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Mach">
+<meta property="og:title" content="Mach: the instant mail app for Gmail">
+<meta property="og:description" content="Free, open-source, native on Mac and iPhone. Search 50,000 messages in 2 ms.">
+<meta property="og:url" content="https://mach.ahmedkhaleel.com/">
+<meta property="og:image" content="https://mach.ahmedkhaleel.com/assets/social.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/s.css">
+<script src="/k.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="bar">
+  <div class="wrap">
+    <a class="brand" href="/"><img src="/assets/icon-64.png" width="26" height="26" alt="">Mach <small>by Ahmed Khaleel</small></a>
+    <nav class="nav" aria-label="Pages">
+      <a href="/privacy"><kbd>2</kbd>Privacy</a>
+      <a href="/terms"><kbd>3</kbd>Terms</a>
+      <a href="/support"><kbd>4</kbd>Support</a>
+      <a class="src" href="https://github.com/ahmedkhaleel2004/mach"><kbd>g</kbd>Source</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+
+  <section class="hero">
+    <p class="eyebrow"><b>Mach</b> · a Gmail client for Mac and iPhone · by Ahmed Khaleel</p>
+    <h1 class="big">Mail that is <span>already there.</span></h1>
+    <p class="lede">Mach keeps your mail in a database on your device, so nothing you do waits for the network. <strong>Lists, conversations and search answer before the next frame.</strong> No spinners, almost no animation. Free for personal use, with the source open.</p>
+    <div class="cta">
+      <a class="btn" href="https://github.com/ahmedkhaleel2004/mach/releases/latest">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.5v9M4 7l4 4 4-4M2 14.5h12"/></svg>
+        Download for Mac
+      </a>
+      <span class="soon">iPhone: TestFlight soon</span>
+      <a class="btn ghost" href="https://github.com/ahmedkhaleel2004/mach">Read the source</a>
+    </div>
+    <p class="fine">Apple silicon, macOS 15 or newer. Signed, notarized, and it keeps itself up to date. Until Google finishes reviewing Mach, signing in needs a Google key of your own: five minutes, once. <a href="https://github.com/ahmedkhaleel2004/mach#install">How to set it up</a>.</p>
+
+    <figure class="plate">
+      <picture>
+        <source media="(max-width: 680px)" srcset="/assets/hero-phone.webp" width="640" height="1040">
+        <source srcset="/assets/hero-1200.webp 1200w, /assets/hero.webp 2000w" sizes="(max-width: 1236px) 100vw, 1124px">
+        <img src="/assets/hero.webp" width="2000" height="1125" alt="Mach on a Mac and an iPhone: one inbox as a plain list of conversations, each with the sender's picture, the subject and the first words of the message. The mail shown is made up.">
+      </picture>
+    </figure>
+  </section>
+
+  <section class="sec" id="speed">
+    <p class="tag"><i>01</i>Speed</p>
+    <div>
+      <h2>Fast, measured.</h2>
+      <p class="sub">Medians on a mailbox of 50,000 messages. Almost everything finishes inside a single frame of the screen.</p>
+      <div class="bench">
+        <div class="scale" aria-hidden="true"><div class="ticks"><span class="t-0">0</span><span class="t-120">120 Hz</span><span class="t-60">60 Hz, one frame</span></div></div>
+        <div class="row"><span class="what">Search 50,000 messages</span><span class="track"><b class="ms-2"></b></span><span class="val">2<small>ms</small></span></div>
+        <div class="row"><span class="what">Each letter typed in search</span><span class="track"><b class="ms-0-7"></b></span><span class="val">0.7<small>ms</small></span></div>
+        <div class="row"><span class="what">Read the inbox from disk</span><span class="track"><b class="ms-0-5"></b></span><span class="val">0.5<small>ms</small></span></div>
+        <div class="row"><span class="what">Move down the list, per key</span><span class="track"><b class="ms-2-3"></b></span><span class="val">2.3<small>ms</small></span></div>
+        <div class="row"><span class="what">Archive 50 conversations at once</span><span class="track"><b class="ms-14"></b></span><span class="val">14<small>ms</small></span></div>
+        <div class="row"><span class="what">Open a heavy newsletter</span><span class="track"><b class="ms-17"></b></span><span class="val">17<small>ms</small></span></div>
+        <div class="row"><span class="what">Open a 200-message conversation</span><span class="track"><b class="ms-48"></b></span><span class="val">48<small>ms</small></span></div>
+      </div>
+      <div class="also">
+        <div><p class="n">0.5<small>s</small></p><p>First mail on screen after a brand-new sign-in.</p></div>
+        <div><p class="n">4.6<small>MB</small></p><p>The whole app on Mac. 4.5 MB on iPhone.</p></div>
+        <div><p class="n">0</p><p>Spinners. What you did is sent to Gmail behind you.</p></div>
+      </div>
+      <p class="note">The lines mark one frame: 8.3 ms at 120 Hz, 16.7 ms at 60 Hz. Every number has a benchmark behind it, including what did not get faster: <a href="https://github.com/ahmedkhaleel2004/mach/blob/main/bench/RESULTS.md">bench/RESULTS.md</a>.</p>
+    </div>
+  </section>
+
+  <section class="sec" id="data">
+    <p class="tag"><i>02</i>Your Google data</p>
+    <div>
+      <h2>What Mach does with your Google data.</h2>
+      <p class="sub">Mach is a mail app, so it asks Google for what a mail app needs. It uses that for one thing: showing you your mail and doing what you tell it to.</p>
+      <ul class="ledger">
+        <li><b>Reads your mail</b><span>Messages, conversations, labels, drafts and attachments are fetched from Gmail and kept in a database on your device, so reading and search are instant and work offline.<code>gmail.modify</code></span></li>
+        <li><b>Changes it when you do</b><span>Sending, drafting, archiving, trashing, starring, marking read and snoozing go to Gmail, so they show up in Gmail itself and on your other devices.<code>gmail.modify</code></span></li>
+        <li><b>Reads contact pictures</b><span>From your Google contacts and the people you have written with, Mach reads email addresses and picture addresses, nothing else, to show a sender's face. Your own profile picture too.<code>contacts.readonly · contacts.other.readonly · userinfo.profile</code></span></li>
+        <li><b>Keeps it on your device</b><span>Your mail, the pictures and your Google sign-in stay on your Mac or iPhone, the sign-in in the system keychain. The app talks to Google directly. There is no Mach server in between, and the developer never receives any of it.</span></li>
+        <li><b>Never</b><span>No analytics, no ads, no selling or sharing your data, no training AI models on it, nobody reading it.</span></li>
+      </ul>
+      <p class="pledge"><strong>Limited Use.</strong> Mach's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the <a href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes">Limited Use requirements</a>.</p>
+      <p class="more"><a href="/privacy">Read the privacy policy</a> &nbsp;·&nbsp; <a href="/terms">Terms</a></p>
+    </div>
+  </section>
+
+  <section class="sec" id="feel">
+    <p class="tag"><i>03</i>What it feels like</p>
+    <div>
+      <h2>Things are simply there.</h2>
+      <ul class="ledger">
+        <li><b>One inbox, or all of them</b><span>Every account in a single list, or one at a time. Split Inbox is a switch, off by default.</span></li>
+        <li><b>Keyboard first on Mac</b><span>Gmail's own shortcuts, a command bar on ⌘K, and nothing that needs the mouse.</span></li>
+        <li><b>Swipes on iPhone</b><span>Left to archive, right to mark read, both changeable. Everything follows your finger at 120 Hz.</span></li>
+        <li><b>Undo everything</b><span>Archive, trash, snooze, and sending for five seconds.</span></li>
+        <li><b>Real faces</b><span>The sender's Google picture, or a company's certified logo, the way Gmail shows them.</span></li>
+        <li><b>Search everything</b><span>Instant on the device, with Gmail's own search folded in as you scroll.</span></li>
+        <li><b>Drafts and snoozes live on Gmail</b><span>So they are on every device, and in Gmail itself.</span></li>
+        <li><b>Works offline</b><span>Changes apply at once and go to Gmail when you are back.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="sec" id="keys">
+    <p class="tag"><i>04</i>Shortcuts</p>
+    <div>
+      <h2>The keys you already know.</h2>
+      <ul class="keys">
+        <li>Next, previous <span><kbd>j</kbd><kbd>k</kbd></span></li>
+        <li>Open, back <span><kbd>Enter</kbd><kbd>Esc</kbd></span></li>
+        <li>Archive <span><kbd>e</kbd></span></li>
+        <li>Trash <span><kbd>#</kbd></span></li>
+        <li>Star <span><kbd>s</kbd></span></li>
+        <li>Snooze <span><kbd>b</kbd></span></li>
+        <li>Reply, all, forward <span><kbd>r</kbd><kbd>a</kbd><kbd>f</kbd></span></li>
+        <li>Compose <span><kbd>c</kbd></span></li>
+        <li>Undo <span><kbd>z</kbd></span></li>
+        <li>Search <span><kbd>/</kbd></span></li>
+        <li>Command bar <span><kbd>⌘</kbd><kbd>K</kbd></span></li>
+        <li>Switch list <span><kbd>1</kbd><kbd>9</kbd></span></li>
+      </ul>
+      <p class="note">This page listens to four of them: <kbd>1</kbd> home, <kbd>2</kbd> privacy, <kbd>3</kbd> terms, <kbd>4</kbd> support.</p>
+    </div>
+  </section>
+
+  <section class="sec" id="get">
+    <p class="tag"><i>05</i>Get it</p>
+    <div>
+      <h2>Free for personal use. Source open.</h2>
+      <div class="get">
+        <div>
+          <h3>Mac</h3>
+          <p>Open the disk image and drag Mach to Applications. Apple silicon, macOS 15 or newer.</p>
+          <div class="cta"><a class="btn" href="https://github.com/ahmedkhaleel2004/mach/releases/latest">Download for Mac</a></div>
+        </div>
+        <div>
+          <h3>iPhone</h3>
+          <p>TestFlight soon. Today the iPhone app is built from source with Xcode; the steps are in the README.</p>
+          <div class="cta"><a class="btn ghost" href="https://github.com/ahmedkhaleel2004/mach#iphone">Build it from source</a></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <a class="brand" href="/"><img src="/assets/icon-64.png" width="26" height="26" alt="">Mach</a>
+    <div>
+      <nav aria-label="Footer">
+        <a href="/privacy">Privacy policy</a>
+        <a href="/terms">Terms</a>
+        <a href="/support">Support</a>
+        <a href="https://github.com/ahmedkhaleel2004/mach">Source on GitHub</a>
+        <!--email_off--><a href="mailto:ahmed@gitdiagram.com">ahmed@gitdiagram.com</a><!--/email_off-->
+      </nav>
+      <p>Mach is made and published by Ahmed Khaleel, an independent developer in Ontario, Canada.</p>
+      <p class="tm">Gmail is a trademark of Google LLC. Mach is not affiliated with, endorsed by or sponsored by Google.</p>
+    </div>
+  </div>
+</footer>
+</body>
+</html>
