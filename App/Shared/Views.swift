@@ -709,6 +709,17 @@ struct AccountsView: View {
 
     var body: some View {
         OverlayCard(width: 420) {
+            // With every setting listed this is taller than a phone's screen: then it scrolls inside the card.
+            ViewThatFits(in: .vertical) {
+                rows
+                ScrollView { rows }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    private var rows: some View {
+        Group {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Accounts and settings").font(.system(size: Theme.pt(15), weight: .semibold)).foregroundStyle(Theme.text).padding(14)
                 if model.accounts.count > 1 {
@@ -928,6 +939,7 @@ struct OverlayLayer: View {
                     }
                 }
                 .padding(.top, 90)
+                .padding(.bottom, 12)
             }
         }
     }
