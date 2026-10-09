@@ -1,6 +1,22 @@
 import MachCore
 import Foundation
 
+#if STORE
+/// The build for the App Store has no relay in it: no address to send to and none of the code that sends. Nothing
+/// about an account ever leaves the phone except to Google. New mail is found when the app is opened and in
+/// background refresh, and the app shows its own banner for it.
+struct PushRelay {
+    static let current: PushRelay? = nil
+}
+
+final class LiveLink {
+    init(relay: PushRelay, service: MailService) {}
+    func register(deviceToken: String? = nil, avatars: Bool = true) {}
+    func unregister(_ email: String) {}
+    func start() {}
+    func stop() {}
+}
+#else
 /// Instant delivery needs a small relay you run yourself (see `Relay/`): Gmail tells the relay the moment mail
 /// arrives, the relay tells every running app over an open connection, and tells Apple so the phone is woken.
 /// Without `PushRelay.json` the apps fall back to checking every few seconds.
@@ -152,3 +168,4 @@ final class LiveLink: NSObject, URLSessionWebSocketDelegate, @unchecked Sendable
         if current >= 0 { retry(generation: current) }
     }
 }
+#endif

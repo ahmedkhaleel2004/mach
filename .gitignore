@@ -10,5 +10,6 @@ Relay/wrangler.local.toml
 Relay/node_modules
 Relay/.wrangler
 App/iOS/Info.plist
+App/iOS/Info-Store.plist
 App/NotifyExtension/Info.plist
 __pycache__/

@@ -9,6 +9,8 @@ final class PhoneDelegate: NSObject, UIApplicationDelegate {
     }
     static weak var service: MailService?
 
+    // The App Store build has no relay to push to it, so it never asks Apple for a push address.
+    #if !STORE
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         Self.deviceToken = deviceToken.map { String(format: "%02x", $0) }.joined()
         Self.register()
@@ -28,6 +30,7 @@ final class PhoneDelegate: NSObject, UIApplicationDelegate {
         await service.syncAll()
         return .newData
     }
+    #endif
 
     static var live: LiveLink?
 

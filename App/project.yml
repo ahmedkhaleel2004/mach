@@ -5,6 +5,16 @@ options:
     macOS: "15.0"
     iOS: "18.0"
   createIntermediateGroups: true
+  # The App Store build's Info.plist is the iPhone's with everything that only a push uses taken out.
+  postGenCommand: >-
+    cp iOS/Info.plist iOS/Info-Store.plist &&
+    /usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" -c "Add :UIBackgroundModes array"
+    -c "Add :UIBackgroundModes:0 string fetch" -c "Delete :NSUserActivityTypes" iOS/Info-Store.plist
+# Store is what goes to TestFlight and the App Store (scripts/upload-testflight.sh): Release, with no push relay in it.
+configs:
+  Debug: debug
+  Release: release
+  Store: release
 settings:
   base:
     SWIFT_VERSION: "5.0"
@@ -20,6 +30,8 @@ settings:
   configs:
     Release:
       # Symbol names are kept in the .dSYM beside the app, not inside the app: they were over half the executable.
+      DEPLOYMENT_POSTPROCESSING: YES
+    Store:
       DEPLOYMENT_POSTPROCESSING: YES
 packages:
   MachCore:
@@ -77,6 +89,31 @@ targets:
     dependencies:
       - package: MachCore
       - target: MachNotify
+    preBuildScripts:
+      # An App Store build with no Google key, or with the wrong kind, would greet people with a message meant for
+      # developers. It does not build instead.
+      - name: Check the Google key (Store)
+        basedOnDependencyAnalysis: false
+        script: |
+          [ "$CONFIGURATION" = Store ] || exit 0
+          key="$SRCROOT/Resources/OAuthClient.json"
+          if [ ! -f "$key" ]; then
+            echo "error: a Store build needs an iOS Google sign-in key in App/Resources/OAuthClient.json: {\"client_id\": \"….apps.googleusercontent.com\"}"
+            exit 1
+          fi
+          id="$(/usr/bin/plutil -extract client_id raw -o - "$key" 2>/dev/null || true)"
+          case "$id" in
+            ?*.apps.googleusercontent.com) ;;
+            *) echo "error: App/Resources/OAuthClient.json is not an iOS client: a Store build wants {\"client_id\": \"….apps.googleusercontent.com\"} and nothing else"; exit 1 ;;
+          esac
+          if /usr/bin/grep -qi "secret" "$key"; then
+            echo "error: App/Resources/OAuthClient.json holds a client secret, which must never ship in an App Store build"
+            exit 1
+          fi
+          if [ -f "$SRCROOT/iOS/Info-Store.plist" ] && /usr/bin/grep -q "remote-notification" "$SRCROOT/iOS/Info-Store.plist"; then
+            echo "error: iOS/Info-Store.plist is stale. Run xcodegen generate again."
+            exit 1
+          fi
     info:
       path: iOS/Info.plist
       properties:
@@ -88,12 +125,11 @@ targets:
         UIBackgroundModes: [fetch, remote-notification]
         BGTaskSchedulerPermittedIdentifiers: [com.ahmedkhaleel.mach.refresh]
         NSUserActivityTypes: [INSendMessageIntent]
-        # Lets pictures in old-style (http) newsletters load. Applies to mail content only.
+        # Lets pictures in old-style (http) newsletters load, in the page that shows mail and nowhere else.
         NSAppTransportSecurity:
-          NSAllowsArbitraryLoads: true
+          NSAllowsArbitraryLoadsInWebContent: true
         # Without this an iPhone app is held to 60 frames a second even on a 120 Hz screen.
         CADisableMinimumFrameDurationOnPhone: true
-        NSLocalNetworkUsageDescription: Mach finishes Google sign-in on this device.
         ITSAppUsesNonExemptEncryption: false
     settings:
       base:
@@ -101,6 +137,17 @@ targets:
         PRODUCT_NAME: Mach
         CODE_SIGN_ENTITLEMENTS: iOS/Mach.entitlements
         TARGETED_DEVICE_FAMILY: "1"
+        # The key check above reads a file that is not part of the project, and may not be there.
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+      configs:
+        Store:
+          # No relay means no push: the phone checks when opened and in background refresh, and shows its own
+          # banners. So the App Store build asks for no push entitlement, has no remote-notification background
+          # mode, and leaves out the relay's address and the extension that only ever runs on a push.
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) STORE
+          INFOPLIST_FILE: iOS/Info-Store.plist
+          CODE_SIGN_ENTITLEMENTS: ""
+          EXCLUDED_SOURCE_FILE_NAMES: PushRelay.json MachNotify.appex
   MachNotify:
     type: app-extension
     platform: iOS
