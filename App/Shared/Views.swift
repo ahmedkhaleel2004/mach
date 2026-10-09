@@ -757,6 +757,8 @@ struct AccountsView: View {
                 }
                 .buttonStyle(.plain)
                 Rectangle().fill(Theme.line).frame(height: 1)
+                ThemePicker(model: model)
+                Rectangle().fill(Theme.line).frame(height: 1)
                 HStack {
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Profile pictures").font(.system(size: Theme.pt(14))).foregroundStyle(Theme.text)
@@ -836,6 +838,65 @@ struct AccountsView: View {
                         .font(.system(size: Theme.pt(12))).foregroundStyle(Theme.faint)
                         .padding(.horizontal, 14).padding(.bottom, 12)
                 }
+            }
+        }
+    }
+}
+
+/// The palettes to choose from, each drawn in its own colours. A tap changes the whole app at once.
+struct ThemePicker: View {
+    let model: AppModel
+
+    var body: some View {
+        let chosen = Palettes.shared.current
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Theme").font(.system(size: Theme.pt(14))).foregroundStyle(Theme.text)
+                Spacer()
+                Text(chosen.name).font(.system(size: Theme.pt(13), weight: .semibold)).foregroundStyle(Theme.accent)
+            }
+            .padding(.horizontal, 14)
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(Palette.all) { palette in
+                            swatch(palette, chosen: palette.id == chosen.id)
+                                .id(palette.id)
+                                .onTapGesture { model.setPalette(palette) }
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 2)
+                }
+                .onAppear { proxy.scrollTo(chosen.id, anchor: .center) }
+                .onChange(of: chosen.id) { _, id in proxy.scrollTo(id, anchor: .center) }
+            }
+        }
+        .padding(.vertical, 12)
+    }
+
+    private func swatch(_ palette: Palette, chosen: Bool) -> some View {
+        VStack(spacing: 5) {
+            // A palette that follows the system shows both of its faces.
+            HStack(spacing: 0) {
+                face(palette.day)
+                if palette.dark == nil { face(palette.night) }
+            }
+            .frame(width: 64, height: 44)
+            .clipShape(RoundedRectangle(cornerRadius: 9))
+            .overlay(RoundedRectangle(cornerRadius: 9).stroke(chosen ? Theme.accent : Theme.line, lineWidth: chosen ? 2 : 1))
+            Text(palette.name).font(.system(size: Theme.pt(11), weight: chosen ? .semibold : .regular)).foregroundStyle(chosen ? Theme.text : Theme.dim)
+        }
+        .contentShape(Rectangle())
+    }
+
+    private func face(_ shades: Shades) -> some View {
+        ZStack {
+            Color(light: shades.background, dark: shades.background)
+            VStack(alignment: .leading, spacing: 4) {
+                RoundedRectangle(cornerRadius: 2).fill(Color(light: shades.text, dark: shades.text)).frame(width: 22, height: 4)
+                RoundedRectangle(cornerRadius: 2).fill(Color(light: shades.faint, dark: shades.faint)).frame(width: 16, height: 4)
+                RoundedRectangle(cornerRadius: 2).fill(Color(light: shades.accent, dark: shades.accent)).frame(width: 12, height: 4)
             }
         }
     }

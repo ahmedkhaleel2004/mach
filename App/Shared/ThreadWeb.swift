@@ -104,6 +104,8 @@ final class ThreadWeb: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
     private func loadPage() {
         guard let url = Bundle.main.url(forResource: "thread", withExtension: "html"), var html = try? String(contentsOf: url, encoding: .utf8) else { return }
         html = html.replacingOccurrences(of: "__NONCE__", with: UUID().uuidString.replacingOccurrences(of: "-", with: ""))
+        // The page starts out in the palette chosen in settings, so its first frame is already the right colours.
+        html = html.replacingOccurrences(of: "/*__PALETTE__*/", with: Palettes.shared.current.css)
         guard Bootstrap.offline, !networkBlocked else {
             webView.loadHTMLString(html, baseURL: nil)
             return
@@ -235,6 +237,16 @@ final class ThreadWeb: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         return Data(base64Encoded: String(result[result.index(after: comma)...]))
     }
 
+    /// Puts the conversation in the palette now chosen.
+    func applyPalette() {
+        #if os(iOS)
+        webView.backgroundColor = Theme.platformBackground
+        webView.scrollView.backgroundColor = Theme.platformBackground
+        #endif
+        guard ready, let data = try? JSONEncoder().encode(Palettes.shared.current.css), let text = String(data: data, encoding: .utf8) else { return }
+        webView.evaluateJavaScript("window.mach.palette(\(text))", completionHandler: nil)
+    }
+
     /// Enlarges or shrinks everything in the conversation, text and pictures alike.
     func setZoom(_ scale: Double) {
         webView.pageZoom = scale
@@ -269,6 +281,8 @@ final class ThreadWeb: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         switch type {
         case "ready":
             ready = true
+            // A palette chosen while the page was loading.
+            applyPalette()
             #if DEBUG || BENCH
             Bench.once("thread_web_ready")
             Bench.record("thread_web_warmup", ms: Bench.now() - created)

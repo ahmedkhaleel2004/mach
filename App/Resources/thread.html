@@ -72,6 +72,7 @@ button.primary { background: var(--accent); color: var(--bg); font-weight: 600; 
 button:active { opacity: 0.6; }
 #empty { color: var(--faint); padding: 40px 0; }
 </style>
+<style id="palette">/*__PALETTE__*/</style>
 </head>
 <body>
 <div id="root"></div>
@@ -537,6 +538,10 @@ button:active { opacity: 0.6; }
         window.scrollTo(0, 0);
       }
       if (benchId) reportTimings(benchId, started, built);
+    },
+    /// The colours of the palette chosen in settings, laid over the page's own. Empty puts the page's own back.
+    palette: function (css) {
+      document.getElementById("palette").textContent = css;
     },
     clear: function () {
       current = null;

@@ -31,6 +31,8 @@ struct MachApp: App {
             }
             .transaction { $0.animation = nil }
             .tint(Theme.accent)
+            // A palette that is always light or always dark takes the keyboard and the status bar with it.
+            .preferredColorScheme(Palettes.shared.current.dark.map { $0 ? .dark : .light })
         }
         .onChange(of: phase) { _, value in
             guard let model = host.model else { return }
@@ -146,7 +148,7 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
         // real mail listens to nothing.
         guard Bootstrap.offline else { return }
         let keys = ["j", "k", "e", "s", "u", "c", "r", "a", "f", "h", "z", "x", "o", "enter", "escape", "tab", "palette", "search", "send", "type",
-                    "demoLeft", "demoRight", "style1", "style2", "style3", "lists", "face", "details", "scrollDown", "fling", "bigface", "discard", "drafts", "discardCompose", "replyDetails", "typeLong", "back"]
+                    "demoLeft", "demoRight", "style1", "style2", "style3", "lists", "face", "details", "scrollDown", "fling", "themeNext", "settings", "bigface", "discard", "drafts", "discardCompose", "replyDetails", "typeLong", "back"]
         for key in keys {
             let name = "com.ahmedkhaleel.mach.key.\(key)" as CFString
             CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), nil, { _, _, name, _, _ in
@@ -192,6 +194,10 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
                 let scroll = model.web.webView.scrollView
                 scroll.setContentOffset(CGPoint(x: 0, y: max(0, scroll.contentSize.height - scroll.bounds.height)), animated: true)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { model.markDone() }
+            case "themeNext":
+                let index = Palette.all.firstIndex { $0 == Palettes.shared.current } ?? 0
+                model.setPalette(Palette.all[(index + 1) % Palette.all.count])
+            case "settings": model.overlay = model.overlay == .accounts ? nil : .accounts
             case "details": model.web.webView.evaluateJavaScript("document.querySelector('.msg.open .to').click()", completionHandler: nil)
             case "face": model.web.webView.evaluateJavaScript("document.querySelector('.face').click()", completionHandler: nil)
             case "style1", "style2", "style3": UserDefaults.standard.set(Int(String(key.last!)) ?? 1, forKey: "swipeStyle")

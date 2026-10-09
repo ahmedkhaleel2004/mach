@@ -134,6 +134,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self, let model = self.model else { return event }
             return self.handleScroll(event, model: model) ? nil : event
         }
+        // A palette that is always light or always dark takes the window's own parts with it.
+        let match = { NSApp.appearance = Palettes.shared.current.dark.map { NSAppearance(named: $0 ? .darkAqua : .aqua) } ?? nil }
+        model.paletteChanged = match
+        match()
         Task {
             await Bootstrap.importSeed(into: model.service)
             model.service.startPolling(every: 15)
@@ -202,6 +206,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     model.compose?.subject = String(command.dropFirst(8))
                 } else if command.hasPrefix("attach:") {
                     model.compose?.attachmentPaths.append(String(command.dropFirst(7)))
+                } else if command.hasPrefix("theme:") {
+                    if let palette = Palette.all.first(where: { $0.id == command.dropFirst(6) }) { model.setPalette(palette) }
+                } else if command == "settings" {
+                    model.overlay = model.overlay == .accounts ? nil : .accounts
                 } else if command == "replydetails" {
                     model.replyDetailsRequest += 1
                 } else if command == "discardcompose" {

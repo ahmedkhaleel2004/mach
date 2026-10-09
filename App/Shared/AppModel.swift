@@ -179,6 +179,15 @@ final class AppModel {
     /// Called when the split changes, so the push relay can match which mail gets a banner.
     var splitChanged: () -> Void = {}
 
+    /// Set by each platform: makes the system's own parts (the keyboard, scroll bars, menus) light or dark to match.
+    var paletteChanged: () -> Void = {}
+
+    func setPalette(_ palette: Palette) {
+        Palettes.shared.choose(palette)
+        if webWarm { web.applyPalette() }
+        paletteChanged()
+    }
+
     func setSplit(_ on: Bool) {
         splitInbox = on
         UserDefaults.standard.set(on, forKey: MailList.splitKey)
@@ -1678,6 +1687,9 @@ final class AppModel {
         }
         if accounts.count > 1, !isAll {
             items.append(Command(title: "Switch to All Inboxes", keys: "⌃0") { [weak self] in self?.switchAccount("") })
+        }
+        for palette in Palette.all where palette != Palettes.shared.current {
+            items.append(Command(title: "Theme: \(palette.name)") { [weak self] in self?.setPalette(palette) })
         }
         for (index, account) in accounts.enumerated() where account.id != accountId {
             items.append(Command(title: "Switch to \(account.id)", keys: "⌃\(index + 1)") { [weak self] in self?.switchAccount(account.id) })
