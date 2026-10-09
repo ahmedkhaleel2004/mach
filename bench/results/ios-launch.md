@@ -1,13 +1,13 @@
 # iPhone launch frontier: results
 
-Simulator only (iPhone 18 Pro, device `BlitzBench-ios-launch`), on a Mac other agents were loading (load average 7 to
+Simulator only (iPhone 18 Pro, device `MachBench-ios-launch`), on a Mac other agents were loading (load average 7 to
 500). **Simulator numbers are not iPhone numbers.** Times are the main thread's own processor time unless marked
 "clock"; A/B figures come from two variants launched in turn in the same minutes. Counts are exact.
 "real" is the snapshot of real mail: numbers only.
 
 ## How to run
 
-    export BLITZ_BENCH_DATA=<folder with synth/ and real/>
+    export MACH_BENCH_DATA=<folder with synth/ and real/>
     APP=$(DD=build/dd-ios-launch bench/build.sh ios)
     bench/ios-launch/locked.sh launch synth 15          # or real | empty | wal; takes a simulator lock first
     bench/ios-launch/locked.sh open synth 12            # cold launch straight into a conversation (notification path)

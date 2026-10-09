@@ -1,25 +1,25 @@
-import BlitzCore
+import MachCore
 import Foundation
 
 /// Finds the Google sign-in key and opens the local database.
 enum Bootstrap {
-    /// `BLITZ_DATA_DIR` points the app at another folder, so a test build never touches real mail.
+    /// `MACH_DATA_DIR` points the app at another folder, so a test build never touches real mail.
     static let directory: URL = {
-        if let custom = ProcessInfo.processInfo.environment["BLITZ_DATA_DIR"], !custom.isEmpty {
+        if let custom = ProcessInfo.processInfo.environment["MACH_DATA_DIR"], !custom.isEmpty {
             return URL(fileURLWithPath: custom, isDirectory: true)
         }
         #if BENCH
         // A benchmark build without its own folder would open the real mailbox. It refuses to start instead.
-        FileHandle.standardError.write(Data("BENCH build: set BLITZ_DATA_DIR\n".utf8))
+        FileHandle.standardError.write(Data("BENCH build: set MACH_DATA_DIR\n".utf8))
         exit(2)
         #else
         return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Blitzmail", isDirectory: true)
+            .appendingPathComponent("Mach", isDirectory: true)
         #endif
     }()
 
-    /// `BLITZ_OFFLINE=1`: no sync, no relay, no picture lookups, no permission prompts. For benchmarks.
-    static let offline = ProcessInfo.processInfo.environment["BLITZ_OFFLINE"] == "1"
+    /// `MACH_OFFLINE=1`: no sync, no relay, no picture lookups, no permission prompts. For benchmarks.
+    static let offline = ProcessInfo.processInfo.environment["MACH_OFFLINE"] == "1"
 
     /// The key ships inside the app when `App/Resources/OAuthClient.json` exists at build time.
     /// A copy in the app's data folder wins, so a downloaded build can be pointed at your own Google project.
@@ -50,7 +50,7 @@ enum Bootstrap {
     private static func open() -> (MailService, hasClient: Bool)? {
         let found = client()
         // A custom data folder keeps its sign-ins beside it, so a test build never reads or deletes the real ones.
-        let custom = ProcessInfo.processInfo.environment["BLITZ_DATA_DIR"]?.isEmpty == false
+        let custom = ProcessInfo.processInfo.environment["MACH_DATA_DIR"]?.isEmpty == false
         let tokens: TokenStore = custom ? FileTokenStore(directory: directory) : KeychainTokenStore()
         let service = try? MailService(directory: directory, client: found ?? OAuthClient(clientId: "", clientSecret: nil), tokens: tokens, offline: offline)
         return service.map { ($0, found != nil) }

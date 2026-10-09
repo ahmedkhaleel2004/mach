@@ -1,5 +1,5 @@
 #if DEBUG || BENCH
-@_spi(Bench) import BlitzCore
+@_spi(Bench) import MachCore
 import GRDB
 import ObjectiveC
 import SwiftUI
@@ -7,7 +7,7 @@ import UIKit
 
 /// Benchmark scenarios for the iPhone list screen. Compiled out of the app people use.
 ///
-/// Started by `bench/ios-list/run.sh`, which launches the app with `BLITZ_LIST_BENCH=<scenarios>` (a comma list,
+/// Started by `bench/ios-list/run.sh`, which launches the app with `MACH_LIST_BENCH=<scenarios>` (a comma list,
 /// run in order). Each scenario does to the model and the list what a finger would and appends its numbers to
 /// `bench.jsonl` in the data folder; the last line is `list_bench_done`. Nothing here runs unless the app was
 /// started offline on a data folder of its own.
@@ -22,10 +22,10 @@ enum ListBench {
 
     static func runFromEnvironment(model: AppModel) {
         let environment = ProcessInfo.processInfo.environment
-        guard Bootstrap.offline, environment["BLITZ_DATA_DIR"]?.isEmpty == false else { return }
+        guard Bootstrap.offline, environment["MACH_DATA_DIR"]?.isEmpty == false else { return }
         self.model = model
         listenForCommands()
-        guard let spec = environment["BLITZ_LIST_BENCH"], !spec.isEmpty else { return }
+        guard let spec = environment["MACH_LIST_BENCH"], !spec.isEmpty else { return }
         Hooks.install(pool: model.service.store.pool)
         Task { @MainActor in
             // Let the launch finish first: the first rows, the first frames, the web view's own start.
@@ -259,8 +259,8 @@ enum ListBench {
     /// for a finger; the later ones are scrolling alone.
     private static func scroll() async {
         guard let list = listScroll else { return Bench.record("scroll.error", ms: 0) }
-        let step = CGFloat(number("BLITZ_LIST_STEP", 120))
-        let target = number("BLITZ_LIST_ROWS", 1000)
+        let step = CGFloat(number("MACH_LIST_STEP", 120))
+        let target = number("MACH_LIST_ROWS", 1000)
         list.setContentOffset(CGPoint(x: 0, y: -list.adjustedContentInset.top), animated: false)
         await frames(6)
         for pass in ["down1", "up1", "down2", "up2"] {
@@ -304,7 +304,7 @@ enum ListBench {
     }
 
     private static func invalidate() async {
-        let rounds = Int(number("BLITZ_LIST_ROUNDS", 5))
+        let rounds = Int(number("MACH_LIST_ROUNDS", 5))
         guard let list = listScroll else { return Bench.record("inv.error", ms: 0) }
         list.setContentOffset(CGPoint(x: 0, y: -list.adjustedContentInset.top), animated: false)
         await frames(6)
@@ -376,7 +376,7 @@ enum ListBench {
             await measure("toastGone4") { model.toast = nil }
 
             // Opening a conversation over the list, dragging it back, and letting go.
-            if ProcessInfo.processInfo.environment["BLITZ_LIST_NO_OPEN"] != "1" {
+            if ProcessInfo.processInfo.environment["MACH_LIST_NO_OPEN"] != "1" {
                 let opened = realRows[2]
                 await measure("openThread", settle: 12) { model.show(opened) }
                 before = Snapshot()
@@ -433,7 +433,7 @@ enum ListBench {
     // MARK: 3. The swipe
 
     private static func swipe() async {
-        let rounds = Int(number("BLITZ_LIST_ROUNDS", 5)) * 2
+        let rounds = Int(number("MACH_LIST_ROUNDS", 5)) * 2
         guard let list = listScroll else { return }
         list.setContentOffset(CGPoint(x: 0, y: -list.adjustedContentInset.top), animated: false)
         await frames(6)
@@ -488,7 +488,7 @@ enum ListBench {
             await frames(10)
         }
         // Tap to open, from the list's side: the call a tap makes, to the frame after.
-        if ProcessInfo.processInfo.environment["BLITZ_LIST_NO_OPEN"] != "1" {
+        if ProcessInfo.processInfo.environment["MACH_LIST_NO_OPEN"] != "1" {
             for index in 0 ..< rounds {
                 let rows = realRows
                 guard index + 2 < rows.count else { break }
@@ -511,7 +511,7 @@ enum ListBench {
 
     private static func loadMore() async {
         guard let list = listScroll else { return }
-        let rounds = Int(number("BLITZ_LIST_LOADS", 6))
+        let rounds = Int(number("MACH_LIST_LOADS", 6))
         for round in 0 ..< rounds {
             // Sit a few rows above the bottom, as a finger is when the last row comes into view.
             let bottom = max(0, list.contentSize.height - list.bounds.height)
@@ -604,7 +604,7 @@ enum ListBench {
     // MARK: 5. Switching lists and accounts, search
 
     private static func switching() async {
-        let rounds = Int(number("BLITZ_LIST_ROUNDS", 5))
+        let rounds = Int(number("MACH_LIST_ROUNDS", 5))
         await frames(10)
         for _ in 0 ..< rounds {
             for (name, target) in [("toAll", MailList.all), ("toSent", .sent), ("toStarred", .starred), ("toSnoozedEmpty", .snoozed), ("toHome", model.home)] {
@@ -623,7 +623,7 @@ enum ListBench {
     /// Typing into search on the big mailbox: the whole cost of a letter on the main thread, and how much of it
     /// is the query (measured by running the same query again by itself).
     private static func search() async {
-        let rounds = Int(number("BLITZ_LIST_ROUNDS", 5))
+        let rounds = Int(number("MACH_LIST_ROUNDS", 5))
         for _ in 0 ..< rounds {
             let word = Array(searchWord())
             await measure("searchOpen", settle: 6) { model.startSearch() }
@@ -663,7 +663,7 @@ enum ListBench {
         Bench.record("memory.before", ms: footprint(), fields)
         list.setContentOffset(CGPoint(x: 0, y: -list.adjustedContentInset.top), animated: false)
         await frames(6)
-        let target = number("BLITZ_LIST_MEMORY_ROWS", 3000)
+        let target = number("MACH_LIST_MEMORY_ROWS", 3000)
         _ = await fling(list, by: 240, rows: target, rowHeight: rowHeight(list))
         await frames(30)
         fields = ["rows": model.rows.count]
@@ -678,7 +678,7 @@ enum ListBench {
 
     // MARK: Commands from the script (for screenshots)
 
-    /// `xcrun simctl spawn <device> notifyutil -p app.blitzbench.list.<command>`: puts the list in a state and holds
+    /// `xcrun simctl spawn <device> notifyutil -p com.ahmedkhaleel.machbench.list.<command>`: puts the list in a state and holds
     /// it there, so a screenshot can be taken. Each command writes one `list_command` line when it has been drawn.
     private static func listenForCommands() {
         let commands = ["tick", "untick", "hold-left-40", "hold-left-100", "hold-right-40", "hold-right-100", "drop", "all", "home", "snoozed", "search", "searchEnd",
@@ -687,7 +687,7 @@ enum ListBench {
             CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), nil, { _, _, name, _, _ in
                 guard let raw = name?.rawValue as String?, let command = raw.split(separator: ".").last.map(String.init) else { return }
                 DispatchQueue.main.async { ListBench.command(command) }
-            }, "app.blitzbench.list.\(command)" as CFString, nil, .deliverImmediately)
+            }, "com.ahmedkhaleel.machbench.list.\(command)" as CFString, nil, .deliverImmediately)
         }
     }
 
@@ -748,8 +748,8 @@ enum Hooks {
         os_unfair_lock_unlock(&lock)
     }
 
-    /// With `BLITZ_LIST_CLASSES=1`, which kinds of layer were made and drawn: "made CGDrawingLayer" and so on.
-    static let byClass = ProcessInfo.processInfo.environment["BLITZ_LIST_CLASSES"] == "1"
+    /// With `MACH_LIST_CLASSES=1`, which kinds of layer were made and drawn: "made CGDrawingLayer" and so on.
+    static let byClass = ProcessInfo.processInfo.environment["MACH_LIST_CLASSES"] == "1"
     nonisolated(unsafe) private static var classes: [String: Int] = [:]
 
     private static func note(_ what: String, _ object: UnsafeMutableRawPointer) {

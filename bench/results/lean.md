@@ -3,7 +3,7 @@
 Measured on 2026-10-08 on the owner's Mac (10 cores, 16 GB) while five other agents were building and benchmarking
 on it, so every time below carries real noise: the same launch measured 265-375 ms depending on the minute. Sizes,
 counts of calls and counts of rebuilt views are exact. `synth` is the 50,000-message made-up mailbox, `real` the
-snapshot of the real one (numbers only). Set `export BLITZ_BENCH_DATA=<folder with synth/ and real/>` first; the Mac
+snapshot of the real one (numbers only). Set `export MACH_BENCH_DATA=<folder with synth/ and real/>` first; the Mac
 benchmarks need `bench/build.sh mac`.
 
 ## Kept
@@ -73,7 +73,7 @@ is 2.3 MB. Sender pictures: 57 files, 284 KB, at most 4 MB decoded on this mailb
 ## Tried, did not help or not kept
 
 - `DEAD_CODE_STRIPPING=YES`: -12 KB. Swift marks every public function of a package "no dead strip", so the linker
-  keeps all of GRDB and BlitzCore whether called or not. With no exported symbols as well: -213 KB of export table,
+  keeps all of GRDB and MachCore whether called or not. With no exported symbols as well: -213 KB of export table,
   which stripping removes anyway. Dropped.
 - `-Osize` for the app target: executable 4,101,032 -> 3,987,176 B (-2.8%). Launch, j key and list switch showed no
   difference, but the noise on this Mac (±20%) is larger than any slowdown it could cause, and 114 KB is not worth

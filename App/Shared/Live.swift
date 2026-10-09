@@ -1,4 +1,4 @@
-import BlitzCore
+import MachCore
 import Foundation
 
 /// Instant delivery needs a small relay you run yourself (see `Relay/`): Gmail tells the relay the moment mail
@@ -49,7 +49,7 @@ final class LiveLink: NSObject, URLSessionWebSocketDelegate, @unchecked Sendable
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(relay.secret, forHTTPHeaderField: "X-Blitz-Secret")
+        request.setValue(relay.secret, forHTTPHeaderField: "X-Mach-Secret")
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
         Task.detached {
             if let (data, response) = try? await URLSession.shared.data(for: request) {
@@ -64,7 +64,7 @@ final class LiveLink: NSObject, URLSessionWebSocketDelegate, @unchecked Sendable
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(relay.secret, forHTTPHeaderField: "X-Blitz-Secret")
+        request.setValue(relay.secret, forHTTPHeaderField: "X-Mach-Secret")
         request.httpBody = try? JSONSerialization.data(withJSONObject: ["email": email])
         Task.detached { _ = try? await URLSession.shared.data(for: request) }
     }
@@ -89,7 +89,7 @@ final class LiveLink: NSObject, URLSessionWebSocketDelegate, @unchecked Sendable
               var components = URLComponents(string: relay.url.replacingOccurrences(of: "https://", with: "wss://") + "/live") else { return }
         components.queryItems = [URLQueryItem(name: "emails", value: emails.joined(separator: ","))]
         var request = URLRequest(url: components.url!)
-        request.setValue(relay.secret, forHTTPHeaderField: "X-Blitz-Secret")
+        request.setValue(relay.secret, forHTTPHeaderField: "X-Mach-Secret")
         let socket = session.webSocketTask(with: request)
         let current: Int = lock.withLock {
             generation += 1

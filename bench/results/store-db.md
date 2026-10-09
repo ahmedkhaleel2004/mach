@@ -1,12 +1,12 @@
 # Store / database layer: results
 
-Branch `perf-store-db`. Everything is headless (`blitzbench store`), measured on throwaway copies of the two
+Branch `perf-store-db`. Everything is headless (`machbench store`), measured on throwaway copies of the two
 mailboxes: `synth` (50,000 made-up messages, 2 accounts, 1.2 GB) and `real` (a snapshot of a real mailbox,
 ~3,200 messages, 116 MB; numbers only).
 
 ## How to re-run
 
-    export BLITZ_BENCH_DATA=<folder holding synth/ and real/>
+    export MACH_BENCH_DATA=<folder holding synth/ and real/>
     bench/store-db/run.sh synth            # every section, prints JSON lines, keeps build/store-db/synth-run.jsonl
     bench/store-db/run.sh real
     bench/store-db/run.sh synth run search write      # only some sections
@@ -23,9 +23,9 @@ This Mac was busy the whole session (load average between 4 and 120), so every n
 back-to-back run of two binaries on fresh copies: the code before any change (commit b858e70, built with the
 final benchmark harness) and the final code. `bench/store-db/ab.sh` does that:
 
-    git archive b858e70 Core | tar -x -C build/basetree      # then copy today's Core/Sources/blitzbench/*.swift and
+    git archive b858e70 Core | tar -x -C build/basetree      # then copy today's Core/Sources/machbench/*.swift and
     (cd build/basetree/Core && swift build -c release)       # StoreBenchSupport.swift over it (plus a one-line
-    cp build/basetree/Core/.build/release/blitzbench build/blitzbench-base   # stripReference = strip shim)
+    cp build/basetree/Core/.build/release/machbench build/machbench-base   # stripReference = strip shim)
     bench/store-db/ab.sh synth read thread search write misc storage observe pages
 
 The raw lines of that run are `bench/store-db/baseline-*.jsonl` and `final-*.jsonl`; `table.py` prints the table.
@@ -215,7 +215,7 @@ the refresh counts next to them are exact.
   against a rebuild from nothing; search's two ways against each other on a mailbox built to tie (12 dates for
   about 500 threads); the faster HTML-to-text against the old one (fuzzed, and every UTF-16 unit); that the list still
   refreshes after a change that alters nothing while the conversation and counts stay quiet for unrelated writes.
-- `blitzbench store <dir> strip-check`: HTML-to-text, new against old, over every stored body: 0 of 50,000 (synth)
+- `machbench store <dir> strip-check`: HTML-to-text, new against old, over every stored body: 0 of 50,000 (synth)
   and 0 of 2,849 (real) differ.
 
 ## Tried, did not help or not kept

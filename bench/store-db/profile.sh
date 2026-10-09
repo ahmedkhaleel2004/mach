@@ -6,7 +6,7 @@ umask 077
 cd "$(dirname "$0")/../.."
 work="build/store-db/profile-$1"
 bench/data.sh fresh "$1" "$work"
-Core/.build/release/blitzbench store "$work" spin "$2" &
+Core/.build/release/machbench store "$work" spin "$2" &
 pid=$!
 sleep 5
 sample "$pid" 4 -mayDie -file "build/store-db/profile-$1-$2.txt" >/dev/null 2>&1 || true

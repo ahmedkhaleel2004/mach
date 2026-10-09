@@ -10,7 +10,7 @@ root="$PWD"
 commit="$1"; name="$2"
 mkdir -p build/apps
 if [ "$commit" = WORK ]; then
-  app=$(BLITZ_DATA_DIR=/nonexistent DD=build/dd-ios-list bench/build.sh ios | tail -1)
+  app=$(MACH_DATA_DIR=/nonexistent DD=build/dd-ios-list bench/build.sh ios | tail -1)
 else
   src="$root/build/src-$name"
   rm -rf "$src/App" "$src/Core/Sources" "$src/bench"; mkdir -p "$src"
@@ -18,7 +18,7 @@ else
   # Today's scenarios over that day's app. The counters in the views themselves belong to the commit.
   cp App/iOS/ListBench.swift App/iOS/ListLab.swift App/iOS/ListEqLab.swift "$src/App/iOS/"
   [ -f "$src/Core/.build/workspace-state.json" ] || true
-  app=$(cd "$src" && BLITZ_DATA_DIR=/nonexistent DD=build/dd bench/build.sh ios | tail -1)
+  app=$(cd "$src" && MACH_DATA_DIR=/nonexistent DD=build/dd bench/build.sh ios | tail -1)
 fi
 rm -rf "build/apps/$name.app"
 cp -R "$app" "build/apps/$name.app"

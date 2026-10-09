@@ -1,5 +1,5 @@
 #!/bin/sh
-# Benchmarks for the local database layer (Core/Sources/BlitzCore/Store.swift). Headless; never touches real mail.
+# Benchmarks for the local database layer (Core/Sources/MachCore/Store.swift). Headless; never touches real mail.
 #
 #   bench/store-db/run.sh synth|real [tag] [section...]
 #
@@ -16,13 +16,13 @@ mailbox="${1:?synth or real}"
 tag="${2:-run}"
 [ $# -ge 2 ] && shift 2 || shift 1
 [ $# -gt 0 ] || set -- read thread search write misc storage observe pages
-(cd Core && swift build -c release --product blitzbench >/dev/null 2>&1)
+(cd Core && swift build -c release --product machbench >/dev/null 2>&1)
 mkdir -p build/store-db
 chmod 700 build
 work="build/store-db/work-$mailbox"
 if [ "$tag" = digest ] || [ "$tag" = digest-write ]; then
   bench/data.sh fresh "$mailbox" "$work"
-  Core/.build/release/blitzbench store "$work" "$tag"
+  Core/.build/release/machbench store "$work" "$tag"
   rm -rf "$work"
   exit 0
 fi
@@ -30,6 +30,6 @@ out="build/store-db/$mailbox-$tag.jsonl"
 : > "$out"
 for section in "$@"; do
   bench/data.sh fresh "$mailbox" "$work"
-  Core/.build/release/blitzbench store "$work" "$section" | tee -a "$out"
+  Core/.build/release/machbench store "$work" "$section" | tee -a "$out"
 done
 rm -rf "$work"

@@ -234,7 +234,10 @@ public struct Draft: Codable, FetchableRecord, PersistableRecord, Identifiable, 
     }
 
     /// The Message-ID this draft is sent with. Fixed per draft, so a repeated attempt is recognisable.
-    public var outgoingMessageId: String { "<\(id.lowercased())@mail.blitzmail.app>" }
+    public var outgoingMessageId: String {
+        // Under the sender's own domain, as mail programs do.
+        "<\(id.lowercased())@\(accountId.split(separator: "@").last.map(String.init) ?? "localhost")>"
+    }
 }
 
 /// A change made locally that still has to reach Gmail.

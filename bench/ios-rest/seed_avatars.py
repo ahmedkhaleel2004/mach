@@ -3,7 +3,7 @@
 Offline the app never downloads pictures, so without this the picture caches stay empty and their memory cannot
 be measured. Each picture is a 160 x 160 PNG of coloured blocks, about the size of a real profile picture.
 
-    python3 bench/ios-rest/seed_avatars.py <mail.sqlite of a working copy> <folder>     (BLITZ_AVATAR_DIR for the app)
+    python3 bench/ios-rest/seed_avatars.py <mail.sqlite of a working copy> <folder>     (MACH_AVATAR_DIR for the app)
 """
 import hashlib, os, random, sqlite3, struct, sys, zlib
 

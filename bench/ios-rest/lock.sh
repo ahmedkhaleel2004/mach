@@ -1,8 +1,8 @@
 # Sourced by the scripts here. At most two simulators may be booted on this Mac at a time (four at once made every
-# number useless), so whoever measures holds /tmp/blitz-sim.lock or /tmp/blitz-sim2.lock, and gives it back, with its app stopped,
+# number useless), so whoever measures holds /tmp/mach-sim.lock or /tmp/mach-sim2.lock, and gives it back, with its app stopped,
 # when the script ends for any reason. A lock older than 15 minutes belongs to something that died.
-sim_name=BlitzBench-ios-rest
-sim_locks="/tmp/blitz-sim.lock /tmp/blitz-sim2.lock"
+sim_name=MachBench-ios-rest
+sim_locks="/tmp/mach-sim.lock /tmp/mach-sim2.lock"
 sim_lock=
 
 sim_device() {
@@ -12,9 +12,9 @@ sim_device() {
 }
 
 # Booting is what loads the Mac most, so the simulator is left booted between turns: only the app is stopped.
-# Shut it down by hand when the work is over: xcrun simctl shutdown BlitzBench-ios-rest
+# Shut it down by hand when the work is over: xcrun simctl shutdown MachBench-ios-rest
 sim_release() {
-  xcrun simctl terminate "$device" app.blitzbench.ios 2>/dev/null || true
+  xcrun simctl terminate "$device" com.ahmedkhaleel.machbench.ios 2>/dev/null || true
   [ -n "$sim_lock" ] && [ "$(cat "$sim_lock/owner" 2>/dev/null)" = "$$ ios-rest" ] && rm -rf "$sim_lock"
   return 0
 }

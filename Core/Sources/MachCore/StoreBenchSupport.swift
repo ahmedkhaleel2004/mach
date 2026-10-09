@@ -1,7 +1,7 @@
 import Foundation
 import GRDB
 
-// Doors for the headless benchmarks (`blitzbench`) into parts of the store that only sync calls.
+// Doors for the headless benchmarks (`machbench`) into parts of the store that only sync calls.
 // Marked as a private interface, so the app cannot reach them by accident.
 
 extension Store {

@@ -1,6 +1,6 @@
 #!/bin/sh
 # Runs the "everything else on the iPhone" benchmarks (writing mail, search field, overlays, memory, idle) in a
-# headless simulator of its own (BlitzBench-ios-rest; never Simulator.app, never anyone else's device).
+# headless simulator of its own (MachBench-ios-rest; never Simulator.app, never anyone else's device).
 #
 #   bench/ios-rest/run.sh synth "compose search overlays"     scenarios, in order, in one launch
 #   bench/ios-rest/run.sh real compose                        numbers only are printed for real mail
@@ -19,9 +19,9 @@ umask 077
 cd "$(dirname "$0")/../.."
 box="${1:-synth}"
 spec="${2:-compose reply send search overlays}"
-export BLITZ_BENCH_DATA="${BLITZ_BENCH_DATA:-$PWD/build/data}"
-app="${APP:-$(DD=build/dd-ios-rest BLITZ_DATA_DIR=/nonexistent bench/build.sh ios | tail -1)}"
-bundle=app.blitzbench.ios
+export MACH_BENCH_DATA="${MACH_BENCH_DATA:-$PWD/build/data}"
+app="${APP:-$(DD=build/dd-ios-rest MACH_DATA_DIR=/nonexistent bench/build.sh ios | tail -1)}"
+bundle=com.ahmedkhaleel.machbench.ios
 dir="$PWD/build/run/ios-rest-$box"
 bench/data.sh fresh "$box" "$dir"
 # Which conversations to reply to, by shape only (the 200-message one, the 150 KB newsletter).
@@ -34,7 +34,7 @@ xcrun simctl install "$device" "$app"
 # "-noPrompts YES": the app does not ask for notifications, whose system alert would cover the screen.
 # PICTURES=1 gives every sender a made-up picture first; otherwise the picture folder is empty (initials only).
 [ "${PICTURES:-0}" != 1 ] || python3 bench/ios-rest/seed_avatars.py "$dir/mail.sqlite" "$dir/avatars" > /dev/null
-pid=$(SIMCTL_CHILD_BLITZ_DATA_DIR="$dir" SIMCTL_CHILD_BLITZ_OFFLINE=1 SIMCTL_CHILD_BLITZ_REST_BENCH="$spec" SIMCTL_CHILD_BLITZ_AVATAR_DIR="$dir/avatars" \
+pid=$(SIMCTL_CHILD_MACH_DATA_DIR="$dir" SIMCTL_CHILD_MACH_OFFLINE=1 SIMCTL_CHILD_MACH_REST_BENCH="$spec" SIMCTL_CHILD_MACH_AVATAR_DIR="$dir/avatars" \
   xcrun simctl launch "$device" $bundle -noPrompts YES | sed 's/.*: //')
 seen=0
 for _ in $(seq ${LIMIT:-2000}); do

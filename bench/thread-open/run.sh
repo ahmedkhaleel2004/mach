@@ -14,15 +14,15 @@ umask 077
 cd "$(dirname "$0")/../.."
 box="${1:-synth}"
 spec="${2:-all:20}"
-export BLITZ_BENCH_DATA="${BLITZ_BENCH_DATA:-$PWD/build/data}"
+export MACH_BENCH_DATA="${MACH_BENCH_DATA:-$PWD/build/data}"
 app="${APP:-$(DD=build/dd-mac bench/build.sh mac)}"
 dir="$PWD/build/run/thread-open-$box"
-channel=app.blitzbench.thread-open
+channel=com.ahmedkhaleel.machbench.thread-open
 bench/data.sh fresh "$box" "$dir"
 sqlite3 "$dir/mail.sqlite" < bench/thread-open/pick.sql > "$dir/bench-threads.tsv"
 sqlite3 -tabs "$dir/mail.sqlite" "select accountId, id from thread" > "$dir/bench-all-threads.tsv"
 before="$(pgrep -f "$app/Contents/MacOS/Mach" || true)"
-open -g -n "$app" --env BLITZ_DATA_DIR="$dir" --env BLITZ_OFFLINE=1 --env BLITZ_DEBUG_CHANNEL="$channel"
+open -g -n "$app" --env MACH_DATA_DIR="$dir" --env MACH_OFFLINE=1 --env MACH_DEBUG_CHANNEL="$channel"
 pid=""
 for _ in $(seq 100); do
   # The one that was not there a moment ago (an earlier run's app may still be on its way out).

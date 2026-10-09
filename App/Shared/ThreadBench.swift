@@ -1,5 +1,5 @@
 #if DEBUG || BENCH
-import BlitzCore
+import MachCore
 import Foundation
 import Network
 import WebKit
@@ -86,12 +86,12 @@ enum ThreadBench {
         Task {
             // Offline, the web view refuses every request to the network (`ThreadWeb.loadPage`). Never run without that.
             guard Bootstrap.offline else {
-                Bench.record("thread_bench_error", ms: 0, ["what": "set BLITZ_OFFLINE=1"])
+                Bench.record("thread_bench_error", ms: 0, ["what": "set MACH_OFFLINE=1"])
                 running = false
                 return
             }
             // Wait for the page: a benchmark sent right at launch would otherwise time the page load.
-            for _ in 0..<500 where (try? await model.web.webView.evaluateJavaScript("typeof window.blitz")) as? String != "object" { await sleep(10) }
+            for _ in 0..<500 where (try? await model.web.webView.evaluateJavaScript("typeof window.mach")) as? String != "object" { await sleep(10) }
             if scenario == "offline" {
                 await offlineCheck(model)
                 running = false
@@ -113,9 +113,9 @@ enum ThreadBench {
         }
     }
 
-    /// On iPhone there is no test hook to send a command on: `BLITZ_THREAD_BENCH=opens:20` at launch runs it.
+    /// On iPhone there is no test hook to send a command on: `MACH_THREAD_BENCH=opens:20` at launch runs it.
     static func runFromEnvironment(model: AppModel) {
-        guard let spec = ProcessInfo.processInfo.environment["BLITZ_THREAD_BENCH"], !spec.isEmpty else { return }
+        guard let spec = ProcessInfo.processInfo.environment["MACH_THREAD_BENCH"], !spec.isEmpty else { return }
         // Several scenarios, one after the other: `opens:10,prepare:5`.
         Task {
             for one in spec.split(separator: ",") {

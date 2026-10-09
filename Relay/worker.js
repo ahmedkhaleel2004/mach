@@ -585,7 +585,7 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (request.method === "POST" && url.pathname === "/register") {
-      if (!safeEqual(request.headers.get("x-blitz-secret") || "", env.RELAY_SECRET)) return json({ error: "forbidden" }, 403);
+      if (!safeEqual(request.headers.get("x-mach-secret") || "", env.RELAY_SECRET)) return json({ error: "forbidden" }, 403);
       try {
         return await register(request, env);
       } catch (error) {
@@ -608,19 +608,19 @@ export default {
       return new Response(null, { status: 204 });
     }
     if (request.method === "POST" && url.pathname === "/unregister") {
-      if (!safeEqual(request.headers.get("x-blitz-secret") || "", env.RELAY_SECRET)) return json({ error: "forbidden" }, 403);
+      if (!safeEqual(request.headers.get("x-mach-secret") || "", env.RELAY_SECRET)) return json({ error: "forbidden" }, 403);
       const body = await request.json().catch(() => ({}));
       if (body.email) await hub(env).fetch(`https://hub/forget?email=${encodeURIComponent(String(body.email).toLowerCase())}`);
       return json({ ok: true });
     }
     if (url.pathname === "/live") {
-      if (!safeEqual(request.headers.get("x-blitz-secret") || "", env.RELAY_SECRET)) return json({ error: "forbidden" }, 403);
+      if (!safeEqual(request.headers.get("x-mach-secret") || "", env.RELAY_SECRET)) return json({ error: "forbidden" }, 403);
       if (request.headers.get("upgrade") !== "websocket") return json({ error: "expected a websocket" }, 426);
       return hub(env).fetch(request);
     }
     if (request.method === "POST" && url.pathname === "/test") {
       // Sends a test banner to every registered device. For checking the Apple side works.
-      if (!safeEqual(request.headers.get("x-blitz-secret") || "", env.RELAY_SECRET)) return json({ error: "forbidden" }, 403);
+      if (!safeEqual(request.headers.get("x-mach-secret") || "", env.RELAY_SECRET)) return json({ error: "forbidden" }, 403);
       const results = [];
       for (const email of (await env.STORE.get("accounts", "json")) || []) {
         const account = await loadAccount(env, email);

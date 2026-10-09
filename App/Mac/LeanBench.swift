@@ -1,6 +1,6 @@
 #if DEBUG || BENCH
 import AppKit
-import BlitzCore
+import MachCore
 import SwiftUI
 
 /// Test-only commands for the `lean` benchmarks (memory, idle, compose). Compiled out of the app people use.

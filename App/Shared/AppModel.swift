@@ -1,4 +1,4 @@
-import BlitzCore
+import MachCore
 import Observation
 import SwiftUI
 
@@ -89,7 +89,7 @@ struct SnoozeOption: Identifiable {
 /// Runs searches of the mail on the device off the main thread, one at a time, the newest text winning.
 final class LocalSearch: @unchecked Sendable {
     /// The person is waiting on this as they type, so it runs with the main thread's priority.
-    private let queue = DispatchQueue(label: "blitz.search", qos: .userInteractive)
+    private let queue = DispatchQueue(label: "mach.search", qos: .userInteractive)
     private let lock = NSLock()
     private var newest = 0
     private var waiting = 0
@@ -268,7 +268,7 @@ final class AppModel {
     private var saveTask: Task<Void, Never>?
     /// Everything that writes a draft or puts a message in the outbox runs here, in the order it was asked for,
     /// so typing and ⌘Enter never wait for the database. Anything that reads drafts waits for it first.
-    private let draftWrites = DispatchQueue(label: "blitz.drafts", qos: .userInitiated)
+    private let draftWrites = DispatchQueue(label: "mach.drafts", qos: .userInitiated)
     private var signInTask: Task<Void, Never>?
     private var loadingMore = false
     /// True between opening a list and the whole of it arriving (see `observeList`).
@@ -849,7 +849,7 @@ final class AppModel {
             ThreadBench.lap("people")
             #endif
             let files = message.attachments.filter { !$0.isInline }.enumerated().map { index, file in
-                ["name": file.filename, "size": file.size, "preview": "blitz-att://m\(message.id)/\(index)"] as [String: Any]
+                ["name": file.filename, "size": file.size, "preview": "mach-att://m\(message.id)/\(index)"] as [String: Any]
             }
             // The full header lines, shown when the "to" line is clicked, the way Gmail's little arrow does.
             var details: [[String]] = [["from", message.sender]]
@@ -870,7 +870,7 @@ final class AppModel {
             allowed.insert(charactersIn: "-._")
             let entry: [String: Any] = [
                 "id": message.id,
-                "avatar": avatars ? "blitz-avatar://a/" + (from.email.addingPercentEncoding(withAllowedCharacters: allowed) ?? "") : "",
+                "avatar": avatars ? "mach-avatar://a/" + (from.email.addingPercentEncoding(withAllowedCharacters: allowed) ?? "") : "",
                 "initials": AvatarStore.initials(from.name.isEmpty ? from.email : from.name),
                 "color": String(format: "#%06x", AvatarStore.colorHex(for: from.email)),
                 "from": from.email == me ? "Me" : from.displayName,
@@ -898,7 +898,7 @@ final class AppModel {
             bodies["local:" + waiting.id] = ["html": waiting.body, "kind": "plain"]
             payloadMessages.append([
                 "id": "local:" + waiting.id,
-                "avatar": avatars ? "blitz-avatar://a/" + (me.addingPercentEncoding(withAllowedCharacters: allowed) ?? "") : "",
+                "avatar": avatars ? "mach-avatar://a/" + (me.addingPercentEncoding(withAllowedCharacters: allowed) ?? "") : "",
                 "initials": AvatarStore.initials(name.isEmpty ? me : name),
                 "color": String(format: "#%06x", AvatarStore.colorHex(for: me)),
                 "from": "Me",

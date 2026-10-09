@@ -1,5 +1,5 @@
 #if DEBUG || BENCH
-import BlitzCore
+import MachCore
 import SwiftUI
 import UIKit
 
@@ -8,7 +8,7 @@ import UIKit
 /// Each "variant" is a list of the same conversations built a different way: the real row, the real row with one
 /// piece left out, one piece by itself, or the real row inside another kind of list. Every variant is put in a
 /// window of its own over the app, flung through a few hundred rows, and thrown away; the variants take turns, so
-/// they are measured in the same minute by the same process. `BLITZ_LIST_LAB` picks variants (default: all).
+/// they are measured in the same minute by the same process. `MACH_LIST_LAB` picks variants (default: all).
 @MainActor
 enum ListLab {
     static let height: CGFloat = 78 + 1.0 / 3
@@ -148,9 +148,9 @@ enum ListLab {
     static func run() async {
         guard let model = ListBench.shared, let scene = ListBench.window?.windowScene else { return }
         let environment = ProcessInfo.processInfo.environment
-        let wanted = (environment["BLITZ_LIST_LAB"] ?? "").split(separator: ",").map(String.init)
+        let wanted = (environment["MACH_LIST_LAB"] ?? "").split(separator: ",").map(String.init)
         let chosen = variants.filter { wanted.isEmpty || wanted.contains($0.name) }
-        let rounds = Int(environment["BLITZ_LIST_ROUNDS"].flatMap(Double.init) ?? 3)
+        let rounds = Int(environment["MACH_LIST_ROUNDS"].flatMap(Double.init) ?? 3)
         let rows = Array(model.rows.filter { !$0.id.hasPrefix("draft:") }.prefix(600))
         let count = min(400, Double(rows.count) - 20)
         guard count > 50 else { return }

@@ -105,7 +105,7 @@ public final class MailService: @unchecked Sendable {
     /// Benchmarks and tests only: a stand-in for Gmail.
     private let transport: GmailTransport?
     private var pollTask: Task<Void, Never>?
-    private let writes = DispatchQueue(label: "blitz.writes", qos: .userInitiated)
+    private let writes = DispatchQueue(label: "mach.writes", qos: .userInitiated)
 
     /// Called with (account, message) when something the person should know about happens. "offline" means no connection.
     public var onReport: (@Sendable (String, String) -> Void)?

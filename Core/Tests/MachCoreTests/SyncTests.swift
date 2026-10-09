@@ -1,8 +1,8 @@
-import BlitzFake
+import MachFake
 import CryptoKit
 import GRDB
 import XCTest
-@testable import BlitzCore
+@testable import MachCore
 
 /// Whole syncs against a pretend Gmail. The point of these is that speed work on the sync must not change what ends
 /// up in the database: each scenario's stored result is compared with a fingerprint taken before any of that work.
@@ -23,7 +23,7 @@ final class SyncTests: XCTestCase {
     private let account = "sync-test@example.com"
 
     private func makeService() throws -> MailService {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("blitz-sync-\(UUID().uuidString)")
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("mach-sync-\(UUID().uuidString)")
         addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
         let mail = try MailService(directory: directory, client: OAuthClient(clientId: "test", clientSecret: nil), tokens: Tokens(),
                                    transport: GmailTransport(protocolClasses: [FakeGmailProtocol.self], speedup: 5000))

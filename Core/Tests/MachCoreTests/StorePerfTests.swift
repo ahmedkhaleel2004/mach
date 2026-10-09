@@ -1,6 +1,6 @@
 import GRDB
 import XCTest
-@_spi(Bench) @testable import BlitzCore
+@_spi(Bench) @testable import MachCore
 
 /// Tests for the store's faster paths: each must give exactly what the plain way gives.
 final class StorePerfTests: XCTestCase {
@@ -32,7 +32,7 @@ final class StorePerfTests: XCTestCase {
 
     /// Rebuilding a thread writes only what changed. The outcome must be what a rebuild from nothing gives.
     func testRebuildByDifferenceMatchesRebuildFromNothing() throws {
-        let store = try Store(path: NSTemporaryDirectory() + "blitz-perf-\(UUID().uuidString).sqlite")
+        let store = try Store(path: NSTemporaryDirectory() + "mach-perf-\(UUID().uuidString).sqlite")
         let me = "me@x.com"
         try store.saveAccount(Account(id: me, name: "Me"))
         try store.replaceLabels([MailLabel(accountId: me, id: "Label_1", name: "Work", type: "user"),
@@ -113,7 +113,7 @@ final class StorePerfTests: XCTestCase {
 
     /// Search has two ways to find the newest matching threads. They must agree, ties and all.
     func testSearchWalkMatchesPlainQuery() throws {
-        let store = try Store(path: NSTemporaryDirectory() + "blitz-perf-\(UUID().uuidString).sqlite")
+        let store = try Store(path: NSTemporaryDirectory() + "mach-perf-\(UUID().uuidString).sqlite")
         let accounts = ["me@x.com", "other@x.com"]
         var state: UInt64 = 7
         func next(_ bound: Int) -> Int {
@@ -160,7 +160,7 @@ final class StorePerfTests: XCTestCase {
     /// What the app relies on: the list comes round after every change the user makes, even one that alters nothing,
     /// while the open conversation and the counts stay quiet when a write does not concern them.
     func testObservationsRefreshWhenTheyShould() async throws {
-        let store = try Store(path: NSTemporaryDirectory() + "blitz-perf-\(UUID().uuidString).sqlite")
+        let store = try Store(path: NSTemporaryDirectory() + "mach-perf-\(UUID().uuidString).sqlite")
         let me = "me@x.com"
         try store.saveAccount(Account(id: me, name: "Me"))
         try store.saveMessages(account: me, messages: [message("m1", thread: "t1", labels: ["INBOX", "UNREAD"]), message("m2", thread: "t2", labels: ["INBOX"])])

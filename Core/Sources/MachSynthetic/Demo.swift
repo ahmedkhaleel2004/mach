@@ -1,4 +1,4 @@
-import BlitzCore
+import MachCore
 import Foundation
 
 extension SyntheticMailbox {

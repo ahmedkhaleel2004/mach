@@ -195,8 +195,8 @@ export function makeWorld({ apnsKey, latency = {} } = {}) {
     APNS_KEY: apnsKey,
     APNS_KEY_ID: "KEYID12345",
     APNS_TEAM_ID: "TEAMID1234",
-    BUNDLE_ID: "app.blitzmail.ios",
-    TOPICS: JSON.stringify({ 111: "projects/test/topics/blitzmail" }),
+    BUNDLE_ID: "com.ahmedkhaleel.mach.ios",
+    TOPICS: JSON.stringify({ 111: "projects/test/topics/mach" }),
   };
 
   let module = null;
@@ -277,7 +277,7 @@ export function makeWorld({ apnsKey, latency = {} } = {}) {
   };
 
   world.register = (accounts, extra = {}) =>
-    world.request("POST", "/register", { headers: { "x-blitz-secret": env.RELAY_SECRET }, body: { accounts: accounts.map((email) => ({ email, refreshToken: `refresh-${email}`, clientId: "111-abc.apps.test" })), ...extra } });
+    world.request("POST", "/register", { headers: { "x-mach-secret": env.RELAY_SECRET }, body: { accounts: accounts.map((email) => ({ email, refreshToken: `refresh-${email}`, clientId: "111-abc.apps.test" })), ...extra } });
 
   /// New mail lands in a made-up mailbox.
   world.deliver = (email, { id, thread = `t-${id}`, from = "Ada Lovelace <ada@example.com>", subject = "Hello", snippet = "A short &amp; friendly note", labels = ["INBOX", "UNREAD", "CATEGORY_PERSONAL"] }) => {

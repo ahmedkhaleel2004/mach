@@ -1,6 +1,6 @@
 import Foundation
 
-// The few doors the made-up-mailbox generator needs. The generator itself lives in the BlitzSynthetic module, which
+// The few doors the made-up-mailbox generator needs. The generator itself lives in the MachSynthetic module, which
 // only the benchmark tool links, so it is not inside the app people use. These are visible inside this package only.
 
 extension Message {

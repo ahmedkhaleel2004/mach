@@ -41,7 +41,7 @@ echo "dylibs_embedded $(find "$app" -name '*.dylib' -o -name '*.framework' | wc 
 echo "static_initializers $(otool -s __DATA_CONST __mod_init_func "$exe" 2>/dev/null | grep -c '^0' || true) (rows of 2 pointers; __init_offs: $(size -m "$exe" | awk '/__init_offs/ {print $3/4}'))"
 echo "symbols $(nm "$exe" 2>/dev/null | wc -l | tr -d ' ')"
 echo "bench_code_symbols $(nm "$exe" 2>/dev/null | xcrun swift-demangle | grep -c 'SyntheticMailbox\|Mach.Bench\b\|enum Bench' || true)"
-echo "bench_code_strings $(strings -a "$exe" | grep -c 'bench.jsonl\|SyntheticMailbox\|BLITZ_DEBUG_CHANNEL\|BENCH build' || true)"
+echo "bench_code_strings $(strings -a "$exe" | grep -c 'bench.jsonl\|SyntheticMailbox\|MACH_DEBUG_CHANNEL\|BENCH build' || true)"
 echo "assets_car_bytes $(find "$app" -name Assets.car -exec stat -f %z {} + | head -1)"
 echo "icns_bytes $(find "$app" -name '*.icns' -exec stat -f %z {} + | head -1)"
 echo "thread_html_bytes $(find "$app" -name thread.html -exec stat -f %z {} + | head -1)"

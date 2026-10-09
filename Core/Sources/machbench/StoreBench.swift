@@ -1,4 +1,4 @@
-@_spi(Bench) import BlitzCore
+@_spi(Bench) import MachCore
 import CryptoKit
 import Foundation
 import GRDB
@@ -6,7 +6,7 @@ import SQLite3
 
 // Benchmarks for the local database layer (Store.swift). Run each section on its own fresh working copy:
 //
-//   blitzbench store <data-dir> read|thread|search|write|misc|storage|observe|pages|digest|digest-write
+//   machbench store <data-dir> read|thread|search|write|misc|storage|observe|pages|digest|digest-write
 //
 // Nothing here prints mail content: thread ids, subjects and search words are picked from the mailbox by shape
 // (the longest thread, the most common word) and only named by that shape in the output.
@@ -58,7 +58,7 @@ func storeBench(_ store: Store, _ args: [String]) throws {
     case "digest": try storeDigest(store, targets)
     case "digest-write": try storeWriteDigest(store, targets)
     default:
-        print("usage: blitzbench store <data-dir> read|thread|search|write|misc|storage|observe|pages|digest|digest-write")
+        print("usage: machbench store <data-dir> read|thread|search|write|misc|storage|observe|pages|digest|digest-write")
         exit(2)
     }
 }

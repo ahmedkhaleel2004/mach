@@ -11,11 +11,11 @@ cd "$(dirname "$0")/../.."
 box="${1:-synth}"
 [ $# -gt 0 ] && shift
 [ $# -eq 0 ] && set -- signal cpu outbox poll first50 initial
-(cd Core && swift build -c release --product blitzbench >/dev/null 2>&1) || { echo "build failed: cd Core && swift build -c release" >&2; exit 1; }
+(cd Core && swift build -c release --product machbench >/dev/null 2>&1) || { echo "build failed: cd Core && swift build -c release" >&2; exit 1; }
 mkdir -p build && chmod 700 build
 for name in "$@"; do
   copy="build/run/sync-$box-$name"
   bench/data.sh fresh "$box" "$copy"
-  Core/.build/release/blitzbench "sync-$name" "$copy"
+  Core/.build/release/machbench "sync-$name" "$copy"
   rm -rf "$copy"
 done

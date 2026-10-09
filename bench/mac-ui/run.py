@@ -6,12 +6,12 @@
 Every run makes a throwaway copy of the mailbox under build/run/, starts the benchmark app in the background
 (offline, on its own debug channel), lets the app play a script of keys (see App/Mac/BenchHook.swift), reads
 bench.jsonl and stops the app by the process id it wrote. Numbers are milliseconds of main-thread time.
-Set BLITZ_BENCH_DATA to where the master mailboxes are (default build/data). Never touches real mail or Gmail.
+Set MACH_BENCH_DATA to where the master mailboxes are (default build/data). Never touches real mail or Gmail.
 """
 import argparse, json, os, signal, statistics, subprocess, sys, time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-CHANNEL = "app.blitzbench.mac-ui"
+CHANNEL = "com.ahmedkhaleel.machbench.mac-ui"
 SIZE = "size:1180x780"
 
 
@@ -57,8 +57,8 @@ def launch(app, data, script, split=False, fresh=True, name="run", shot=None):
     log = os.path.join(folder, "bench.jsonl")
     if os.path.exists(log):
         os.remove(log)
-    subprocess.run(["open", "-g", "-n", app, "--env", f"BLITZ_DATA_DIR={folder}", "--env", "BLITZ_OFFLINE=1", "--env", f"BLITZ_DEBUG_CHANNEL={CHANNEL}",
-                    "--env", "BLITZ_BENCH_SCRIPT=" + ";".join(script + ["done"]),
+    subprocess.run(["open", "-g", "-n", app, "--env", f"MACH_DATA_DIR={folder}", "--env", "MACH_OFFLINE=1", "--env", f"MACH_DEBUG_CHANNEL={CHANNEL}",
+                    "--env", "MACH_BENCH_SCRIPT=" + ";".join(script + ["done"]),
                     "--args", "-scope", "all", "-splitInbox", "YES" if split else "NO", "-showAvatars", "YES", "-ApplePersistenceIgnoreState", "YES"], check=True)
     records, pid, deadline = [], None, time.time() + 600
     try:

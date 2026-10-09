@@ -1,17 +1,17 @@
-import BlitzCore
-import BlitzFake
+import MachCore
+import MachFake
 import Foundation
 import GRDB
 
 // Sync benchmarks. Gmail is played by `FakeGmail` (in memory, a fixed delay per request); nothing reaches the network.
 // Run every one of them against a throwaway copy of a mailbox (`bench/data.sh fresh synth|real <dir>`): they write to it.
 //
-//   blitzbench sync-signal  <dir> [latency-ms=120] [runs=30]   a relay signal to the new mail being on screen
-//   blitzbench sync-cpu     <dir> [runs=200]                   CPU to turn one downloaded message into a record
-//   blitzbench sync-initial <dir> [speedup=30] [inbox=2000]    a first sync and backfill under the paced allowance
-//   blitzbench sync-first50 <dir> [runs=3]                     seconds until the first 50 inbox threads show, real pacing
-//   blitzbench sync-outbox  <dir> [latency-ms=120]             an action (archive) to its request leaving
-//   blitzbench sync-poll    <dir> [latency-ms=120]             what one idle check costs
+//   machbench sync-signal  <dir> [latency-ms=120] [runs=30]   a relay signal to the new mail being on screen
+//   machbench sync-cpu     <dir> [runs=200]                   CPU to turn one downloaded message into a record
+//   machbench sync-initial <dir> [speedup=30] [inbox=2000]    a first sync and backfill under the paced allowance
+//   machbench sync-first50 <dir> [runs=3]                     seconds until the first 50 inbox threads show, real pacing
+//   machbench sync-outbox  <dir> [latency-ms=120]             an action (archive) to its request leaving
+//   machbench sync-poll    <dir> [latency-ms=120]             what one idle check costs
 
 private struct FakeTokens: TokenStore {
     func load(account: String) -> TokenSet? {

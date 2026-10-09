@@ -15,8 +15,8 @@ the simulator time ran out.
     bench/ios-thread/ab.sh A.app B.app synth prepare:4 1   two builds in turn, then side by side
     bench/thread-open/compare.sh A.app B.app synth opens:12    the Mac check (fingerprints, layout time)
 
-`run.sh` boots its own simulator (BlitzBench-ios-thread) once and leaves it booted; it holds one of the two simulator
-locks only while the app measures. Shut the simulator down yourself at the end. `blitzbench pictures <dir>` adds three
+`run.sh` boots its own simulator (MachBench-ios-thread) once and leaves it booted; it holds one of the two simulator
+locks only while the app measures. Shut the simulator down yourself at the end. `machbench pictures <dir>` adds three
 made-up conversations with real 1200 by 800 JPEGs (`pics-data`, `pics-cid`, `pics-thread`).
 
 Which numbers to trust: megabytes and counts (overflow in points, messages built, views drawn, requests) are exact.

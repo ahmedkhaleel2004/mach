@@ -3,7 +3,7 @@
 Offline, the app never downloads pictures, so without this the list only ever draws initials and the picture
 caches stay empty. Each picture is a 160 x 160 PNG of coloured blocks, about the size of a real profile picture.
 
-    python3 bench/ios-list/seed_avatars.py <mail.sqlite of a working copy> <folder> (passed to the app as BLITZ_AVATAR_DIR)
+    python3 bench/ios-list/seed_avatars.py <mail.sqlite of a working copy> <folder> (passed to the app as MACH_AVATAR_DIR)
 """
 import hashlib, os, random, sqlite3, struct, sys, zlib
 

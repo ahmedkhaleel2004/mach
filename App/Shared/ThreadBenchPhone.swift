@@ -1,5 +1,5 @@
 #if DEBUG || BENCH
-import BlitzCore
+import MachCore
 import Foundation
 import QuartzCore
 import WebKit
@@ -8,7 +8,7 @@ import WebKit
 /// collapsed messages, scrolling, the back swipe, the page's memory, losing the page's process, going to the next
 /// conversation and the app's own picture addresses. Compiled out of the app people use.
 ///
-/// `bench/ios-thread/run.sh` starts them (`BLITZ_THREAD_BENCH=fit,prepare:5,...`); each writes lines to `bench.jsonl`.
+/// `bench/ios-thread/run.sh` starts them (`MACH_THREAD_BENCH=fit,prepare:5,...`); each writes lines to `bench.jsonl`.
 extension ThreadBench {
     // MARK: Counting
 
@@ -144,7 +144,7 @@ extension ThreadBench {
         }
     }
 
-    /// Copies the made-up attachments `blitzbench pictures` wrote (`bench-pictures/<message id>/<file>`) to where the
+    /// Copies the made-up attachments `machbench pictures` wrote (`bench-pictures/<message id>/<file>`) to where the
     /// app keeps downloaded attachments, because nothing can be downloaded in a benchmark.
     private static func seedPictures(_ model: AppModel) {
         guard !seeded else { return }
@@ -460,7 +460,7 @@ extension ThreadBench {
 
     // MARK: The app's own picture addresses
 
-    /// Sender pictures and inline pictures come from the app (`blitz-avatar:`, `blitz-cid:`). Counts how often the
+    /// Sender pictures and inline pictures come from the app (`mach-avatar:`, `mach-cid:`). Counts how often the
     /// page asks for them on a first open and on opening the same conversation again, and times each answer from
     /// inside the page.
     private static func pictures(_ model: AppModel, _ shapes: [Chosen], reps: Int) async {
@@ -484,7 +484,7 @@ extension ThreadBench {
                     function collect(scope) {
                       scope.querySelectorAll("img").forEach(function (img) {
                         var src = img.getAttribute("src") || "";
-                        if ((src.indexOf("blitz-cid:") === 0 || src.indexOf("blitz-avatar:") === 0) && !seen[src]) { seen[src] = 1; urls.push(src); }
+                        if ((src.indexOf("mach-cid:") === 0 || src.indexOf("mach-avatar:") === 0) && !seen[src]) { seen[src] = 1; urls.push(src); }
                       });
                       scope.querySelectorAll("*").forEach(function (node) { if (node.shadowRoot) collect(node.shadowRoot); });
                     }
@@ -497,7 +497,7 @@ extension ThreadBench {
                         img.onload = img.onerror = done;
                         img.src = urls[i];
                       });
-                      out[urls[i].indexOf("blitz-cid:") === 0 ? "cid" : "avatar"].push(performance.now() - started);
+                      out[urls[i].indexOf("mach-cid:") === 0 ? "cid" : "avatar"].push(performance.now() - started);
                     }
                     function median(list) { list.sort(function (a, b) { return a - b; }); return list.length ? list[list.length >> 1] : -1; }
                     return [urls.length, median(out.cid), median(out.avatar)].join(" ");

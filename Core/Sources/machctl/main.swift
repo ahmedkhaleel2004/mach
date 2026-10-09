@@ -1,11 +1,11 @@
-import BlitzCore
+import MachCore
 import Foundation
 
 // Development tool: syncs a mailbox into a folder and prints what it found. It only reads from Gmail.
-// usage: blitzctl <oauth-client.json> <google-token.json> <data-dir> [search words]
+// usage: machctl <oauth-client.json> <google-token.json> <data-dir> [search words]
 
 let args = CommandLine.arguments
-// blitzctl signin <oauth-client.json> <url-file> <token-out.json> [email]
+// machctl signin <oauth-client.json> <url-file> <token-out.json> [email]
 // Writes Google's sign-in address to <url-file>, waits for the browser to come back, then saves the refresh token.
 if args.count >= 5, args[1] == "signin" {
     guard let client = OAuthClient.load(from: try Data(contentsOf: URL(fileURLWithPath: args[2]))) else {
@@ -13,7 +13,7 @@ if args.count >= 5, args[1] == "signin" {
         exit(2)
     }
     let urlFile = args[3]
-    let scope = ProcessInfo.processInfo.environment["BLITZ_SCOPE"] ?? OAuth.scope
+    let scope = ProcessInfo.processInfo.environment["MACH_SCOPE"] ?? OAuth.scope
     let tokens = try await OAuth.signIn(client: client, loginHint: args.count > 5 ? args[5] : nil, scope: scope) { url in
         try? url.absoluteString.write(toFile: urlFile, atomically: true, encoding: .utf8)
     }
@@ -24,7 +24,7 @@ if args.count >= 5, args[1] == "signin" {
     exit(0)
 }
 guard args.count >= 4 else {
-    print("usage: blitzctl <oauth-client.json> <google-token.json> <data-dir> [search words]")
+    print("usage: machctl <oauth-client.json> <google-token.json> <data-dir> [search words]")
     exit(2)
 }
 guard let client = OAuthClient.load(from: try Data(contentsOf: URL(fileURLWithPath: args[1]))) else {

@@ -1,7 +1,7 @@
 import AppKit
 import QuickLook
 import ServiceManagement
-import BlitzCore
+import MachCore
 import Sparkle
 import SwiftUI
 
@@ -151,9 +151,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         #if DEBUG || BENCH
-        // Lets a test script press keys in the app without taking the keyboard: `blitzkey j`, `blitzkey special:enter`.
-        // A benchmark build listens on its own channel (`BLITZ_DEBUG_CHANNEL`) so its keys can never reach another copy.
-        let channel = ProcessInfo.processInfo.environment["BLITZ_DEBUG_CHANNEL"] ?? "app.blitzmail.debug"
+        // Lets a test script press keys in the app without taking the keyboard: `machkey j`, `machkey special:enter`.
+        // A benchmark build listens on its own channel (`MACH_DEBUG_CHANNEL`) so its keys can never reach another copy.
+        let channel = ProcessInfo.processInfo.environment["MACH_DEBUG_CHANNEL"] ?? "com.ahmedkhaleel.mach.debug"
         DistributedNotificationCenter.default().addObserver(forName: Notification.Name(channel), object: nil, queue: .main) { [weak self] note in
             let command = note.object as? String ?? ""
             MainActor.assumeIsolated {

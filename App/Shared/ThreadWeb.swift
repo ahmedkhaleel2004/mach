@@ -1,4 +1,4 @@
-import BlitzCore
+import MachCore
 import CryptoKit
 import QuickLookThumbnailing
 import SwiftUI
@@ -45,9 +45,9 @@ final class ThreadWeb: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
 
     init(service: MailService) {
         let configuration = WKWebViewConfiguration()
-        configuration.setURLSchemeHandler(InlineImageHandler(service: service), forURLScheme: "blitz-cid")
-        configuration.setURLSchemeHandler(AvatarHandler(), forURLScheme: "blitz-avatar")
-        configuration.setURLSchemeHandler(AttachmentPreviewHandler(service: service), forURLScheme: "blitz-att")
+        configuration.setURLSchemeHandler(InlineImageHandler(service: service), forURLScheme: "mach-cid")
+        configuration.setURLSchemeHandler(AvatarHandler(), forURLScheme: "mach-avatar")
+        configuration.setURLSchemeHandler(AttachmentPreviewHandler(service: service), forURLScheme: "mach-att")
         configuration.suppressesIncrementalRendering = false
         #if os(iOS)
         configuration.dataDetectorTypes = []
@@ -55,7 +55,7 @@ final class ThreadWeb: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         #endif
         webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
-        configuration.userContentController.add(self, name: "blitz")
+        configuration.userContentController.add(self, name: "mach")
         webView.navigationDelegate = self
         #if os(macOS)
         webView.setValue(false, forKey: "drawsBackground")
@@ -88,9 +88,9 @@ final class ThreadWeb: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
 
     /// Loads the page that shows conversations.
     ///
-    /// With `BLITZ_OFFLINE=1` the web view is first forbidden every request to the network, so mail opened by a test
-    /// or a benchmark cannot fetch its remote pictures and tracking pixels. Only the app's own `blitz-cid` and
-    /// `blitz-avatar` addresses still load. If that rule cannot be put in place the page is not loaded at all.
+    /// With `MACH_OFFLINE=1` the web view is first forbidden every request to the network, so mail opened by a test
+    /// or a benchmark cannot fetch its remote pictures and tracking pixels. Only the app's own `mach-cid` and
+    /// `mach-avatar` addresses still load. If that rule cannot be put in place the page is not loaded at all.
     private func loadPage() {
         guard let url = Bundle.main.url(forResource: "thread", withExtension: "html"), var html = try? String(contentsOf: url, encoding: .utf8) else { return }
         html = html.replacingOccurrences(of: "__NONCE__", with: UUID().uuidString.replacingOccurrences(of: "-", with: ""))
@@ -99,7 +99,7 @@ final class ThreadWeb: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
             return
         }
         let rules = #"[{"trigger":{"url-filter":"^https?://"},"action":{"type":"block"}},{"trigger":{"url-filter":"^wss?://"},"action":{"type":"block"}},{"trigger":{"url-filter":"^ftp://"},"action":{"type":"block"}}]"#
-        WKContentRuleListStore.default().compileContentRuleList(forIdentifier: "blitz-offline", encodedContentRuleList: rules) { [weak self] list, _ in
+        WKContentRuleListStore.default().compileContentRuleList(forIdentifier: "mach-offline", encodedContentRuleList: rules) { [weak self] list, _ in
             DispatchQueue.main.async {
                 guard let self, let list else { return }
                 self.webView.configuration.userContentController.add(list)
@@ -138,11 +138,11 @@ final class ThreadWeb: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
             return false
         }
         let safe = separators ? json.replacingOccurrences(of: "\u{2028}", with: "\\u2028").replacingOccurrences(of: "\u{2029}", with: "\\u2029") : json
-        var script = "window.blitz.render(\(safe))"
+        var script = "window.mach.render(\(safe))"
         #if DEBUG || BENCH
         ThreadBench.lap("escape")
         // A measured render carries an id, and the page reports its timings back under it.
-        if let id = ThreadBench.renderId(bytes: data.count) { script = "window.blitz.render(\(safe), \(id))" }
+        if let id = ThreadBench.renderId(bytes: data.count) { script = "window.mach.render(\(safe), \(id))" }
         defer { ThreadBench.lap("eval") }
         #endif
         guard ready else {
@@ -175,7 +175,7 @@ final class ThreadWeb: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
 
     func clear() {
         waiting = nil
-        run("window.blitz.clear()")
+        run("window.mach.clear()")
     }
 
     /// Draws a vector logo into an ordinary square picture, using the page that is already loaded.
@@ -210,9 +210,9 @@ final class ThreadWeb: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         webView.pageZoom = scale
     }
 
-    func scroll(pages: Double) { act("window.blitz.scroll(\(pages))") }
+    func scroll(pages: Double) { act("window.mach.scroll(\(pages))") }
 
-    func expandAll() { act("window.blitz.expandAll()") }
+    func expandAll() { act("window.mach.expandAll()") }
 
     /// Something done to the conversation on the page. If that conversation is still waiting its turn, this waits with it.
     private func act(_ script: String) {
@@ -308,7 +308,7 @@ final class InlineImageHandler: NSObject, WKURLSchemeHandler, @unchecked Sendabl
     static func url(messageId: String, contentId: String) -> String {
         var allowed = CharacterSet.alphanumerics
         allowed.insert(charactersIn: "-._")
-        return "blitz-cid://m\(messageId)/\(contentId.addingPercentEncoding(withAllowedCharacters: allowed) ?? contentId)"
+        return "mach-cid://m\(messageId)/\(contentId.addingPercentEncoding(withAllowedCharacters: allowed) ?? contentId)"
     }
 
     func webView(_ webView: WKWebView, start urlSchemeTask: any WKURLSchemeTask) {

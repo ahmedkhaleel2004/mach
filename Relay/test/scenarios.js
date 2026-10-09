@@ -168,7 +168,7 @@ export const scenarios = {
     known(world, WORK, [phone(DEVICE_A)]);
     world.deliver(ME, { id: "m1", subject: "Before" });
     await world.pubsub(ME);
-    await world.request("POST", "/unregister", { headers: { "x-blitz-secret": world.env.RELAY_SECRET }, body: { email: ME } });
+    await world.request("POST", "/unregister", { headers: { "x-mach-secret": world.env.RELAY_SECRET }, body: { email: ME } });
     world.deliver(ME, { id: "m2", subject: "After" });
     await world.pubsub(ME);
   },
@@ -176,11 +176,11 @@ export const scenarios = {
   // The test button, and the doors that must stay shut.
   async "test push and wrong secrets"(world) {
     known(world, ME, [phone(DEVICE_A)]);
-    await world.request("POST", "/test", { headers: { "x-blitz-secret": world.env.RELAY_SECRET } });
-    await world.request("POST", "/test", { headers: { "x-blitz-secret": "wrong" } });
+    await world.request("POST", "/test", { headers: { "x-mach-secret": world.env.RELAY_SECRET } });
+    await world.request("POST", "/test", { headers: { "x-mach-secret": "wrong" } });
     await world.request("POST", "/pubsub/wrong", { body: {} });
-    await world.request("POST", "/register", { headers: { "x-blitz-secret": "wrong" }, body: {} });
-    await world.request("POST", "/register", { headers: { "x-blitz-secret": world.env.RELAY_SECRET }, body: { deviceToken: "not hex", accounts: [] } });
+    await world.request("POST", "/register", { headers: { "x-mach-secret": "wrong" }, body: {} });
+    await world.request("POST", "/register", { headers: { "x-mach-secret": world.env.RELAY_SECRET }, body: { deviceToken: "not hex", accounts: [] } });
     await world.request("GET", "/");
   },
 

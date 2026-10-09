@@ -1,11 +1,11 @@
 #if DEBUG || BENCH
 import AppKit
-import BlitzCore
+import MachCore
 import SwiftUI
 
 /// Benchmark commands for the Mac window. Compiled out of the app people use.
 ///
-/// Commands arrive on the debug channel as `bench:<command>` or, for a whole run, in `BLITZ_BENCH_SCRIPT`
+/// Commands arrive on the debug channel as `bench:<command>` or, for a whole run, in `MACH_BENCH_SCRIPT`
 /// (commands separated by `;`), and run one after another. Every timing is main-thread time: from the key
 /// reaching the model to the end of that turn of the run loop, after SwiftUI has updated and Core Animation
 /// has committed the frame. `busy` is everything the main thread did until it next went idle, per key.
@@ -58,7 +58,7 @@ final class BenchRunner {
         CFRunLoopAddObserver(CFRunLoopGetMain(), slept, .commonModes)
         Bench.record("launch.pid", ms: 0, ["pid": Int(getpid())])
         watchFirstFrame()
-        if let script = ProcessInfo.processInfo.environment["BLITZ_BENCH_SCRIPT"], !script.isEmpty {
+        if let script = ProcessInfo.processInfo.environment["MACH_BENCH_SCRIPT"], !script.isEmpty {
             // Wait for the first frame, so launch is timed with nothing else going on.
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { self.enqueue(script.split(separator: ";").map(String.init)) }
         }

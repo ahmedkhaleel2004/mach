@@ -1,13 +1,13 @@
-import BlitzCore
-import BlitzSynthetic
+import MachCore
+import MachSynthetic
 import Foundation
 
 // Benchmarks for the parts of Mach that have no screen. Never touches the network.
 //
-//   blitzbench generate <data-dir> [messages] [seed]    a made-up mailbox in <data-dir>/mail.sqlite
-//   blitzbench demo <data-dir>                           a small made-up inbox for screenshots
-//   blitzbench pictures <data-dir>                       adds three conversations with real pictures to a working copy
-//   blitzbench <name> <data-dir> [args...]               one benchmark; prints JSON lines
+//   machbench generate <data-dir> [messages] [seed]    a made-up mailbox in <data-dir>/mail.sqlite
+//   machbench demo <data-dir>                           a small made-up inbox for screenshots
+//   machbench pictures <data-dir>                       adds three conversations with real pictures to a working copy
+//   machbench <name> <data-dir> [args...]               one benchmark; prints JSON lines
 //
 // Each benchmark lives in its own file in this folder and adds itself to `benchmarks` below.
 
@@ -37,11 +37,11 @@ benchmarks["compose"] = composeBenchmark
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 guard arguments.count >= 2 else {
-    print("usage: blitzbench generate <data-dir> [messages] [seed] | blitzbench <name> <data-dir> [args...]")
+    print("usage: machbench generate <data-dir> [messages] [seed] | machbench <name> <data-dir> [args...]")
     exit(2)
 }
 let directory = URL(fileURLWithPath: arguments[1], isDirectory: true)
-let real = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Blitzmail").standardizedFileURL.path
+let real = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Mach").standardizedFileURL.path
 guard directory.standardizedFileURL.path != real else {
     print("refusing to run against the real mailbox; copy it first (bench/copy-real.sh)")
     exit(2)

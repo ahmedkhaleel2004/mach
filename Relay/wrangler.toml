@@ -1,4 +1,4 @@
-name = "blitzmail-relay"
+name = "mach-relay"
 main = "worker.js"
 compatibility_date = "2026-09-01"
 workers_dev = true
@@ -19,7 +19,7 @@ tag = "v1"
 new_sqlite_classes = ["Hub"]
 
 [vars]
-BUNDLE_ID = "app.blitzmail.ios"
+BUNDLE_ID = "com.ahmedkhaleel.mach.ios"
 # Map of Google project number (the digits before the first "-" in an OAuth client id) to a Pub/Sub topic.
 # Leave empty to poll once a minute instead.
 TOPICS = "{}"

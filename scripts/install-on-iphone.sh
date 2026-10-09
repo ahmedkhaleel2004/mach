@@ -34,5 +34,5 @@ xcodebuild -project Mach.xcodeproj -scheme MachPhone -configuration Release \
 
 echo "==> Installing on $DEVICE"
 xcrun devicectl device install app --device "$DEVICE" ../build/device/Build/Products/Release-iphoneos/Mach.app
-xcrun devicectl device process launch --device "$DEVICE" app.blitzmail.ios >/dev/null 2>&1 \
+xcrun devicectl device process launch --device "$DEVICE" com.ahmedkhaleel.mach.ios >/dev/null 2>&1 \
   && echo "==> Launched" || echo "==> Installed. Unlock your iPhone and open Mach."

@@ -12,8 +12,8 @@
     bench/ios-launch/bench.py sample  synth|real <out.txt>            where the main thread's time goes during a launch
     bench/ios-launch/bench.py down                                    shut the simulator down
 
-Needs BLITZ_BENCH_DATA (the folder holding synth/ and real/). APP=<Mach.app> uses a build instead of making one
-(`DD=build/dd-ios-launch bench/build.sh ios`). Everything runs offline in a simulator of its own (BlitzBench-ios-launch),
+Needs MACH_BENCH_DATA (the folder holding synth/ and real/). APP=<Mach.app> uses a build instead of making one
+(`DD=build/dd-ios-launch bench/build.sh ios`). Everything runs offline in a simulator of its own (MachBench-ios-launch),
 on throwaway copies of the mailboxes under build/run/. For `real`, numbers only are printed.
 
 Mailboxes: `empty` is a first run (no database: the welcome screen); `wal` is the synth mailbox as a crash would leave
@@ -34,10 +34,10 @@ import sys
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DEVICE = "BlitzBench-ios-launch"
-BUNDLE = "app.blitzbench.ios"
+DEVICE = "MachBench-ios-launch"
+BUNDLE = "com.ahmedkhaleel.machbench.ios"
 RUN = os.path.join(ROOT, "build/run")
-DATA = os.environ.get("BLITZ_BENCH_DATA") or os.path.join(ROOT, "build/data")
+DATA = os.environ.get("MACH_BENCH_DATA") or os.path.join(ROOT, "build/data")
 MARKS = ["launch.host", "launch.service", "launch.model.web", "launch.model.accounts", "launch.model.list", "launch.model",
          "launch.hostReady", "launch.firstFrame", "launch.idle", "thread_web_ready", "launch.openCalled", "launch.openShown"]
 # The stretches of a launch that are the app's own doing. Everything before `launch.host` is the system loading
@@ -79,7 +79,7 @@ def boot():
 def build():
     if os.environ.get("APP"):
         return os.environ["APP"]
-    env = dict(os.environ, DD="build/dd-ios-launch", BLITZ_DATA_DIR="/nonexistent")
+    env = dict(os.environ, DD="build/dd-ios-launch", MACH_DATA_DIR="/nonexistent")
     return sh(os.path.join(ROOT, "bench/build.sh"), "ios", env=env).splitlines()[-1]
 
 
@@ -111,7 +111,7 @@ def fresh(box, name):
     if box == "empty":
         return target
     source = "synth" if box == "wal" else box
-    sh(os.path.join(ROOT, "bench/data.sh"), "fresh", source, target, env=dict(os.environ, BLITZ_BENCH_DATA=DATA))
+    sh(os.path.join(ROOT, "bench/data.sh"), "fresh", source, target, env=dict(os.environ, MACH_BENCH_DATA=DATA))
     if box == "wal":
         big_wal(target)
     return target
@@ -155,8 +155,8 @@ def wait_done(folder, command, count=1, seconds=240):
 
 
 def start(udid, bundle, folder, extra=None):
-    env = dict(os.environ, SIMCTL_CHILD_BLITZ_DATA_DIR=folder, SIMCTL_CHILD_BLITZ_OFFLINE="1",
-               SIMCTL_CHILD_BLITZ_DEBUG_CHANNEL="app.blitzbench.ios-launch")
+    env = dict(os.environ, SIMCTL_CHILD_MACH_DATA_DIR=folder, SIMCTL_CHILD_MACH_OFFLINE="1",
+               SIMCTL_CHILD_MACH_DEBUG_CHANNEL="com.ahmedkhaleel.machbench.ios-launch")
     for key, value in (extra or {}).items():
         env["SIMCTL_CHILD_" + key] = value
     asked = time.time() * 1000
@@ -175,9 +175,9 @@ def one_launch(udid, bundle, folder, opening=False, switches=""):
     log = os.path.join(folder, "bench.jsonl")
     if os.path.exists(log):
         os.remove(log)
-    extra = {"BLITZ_LAUNCH_OPEN": "1"} if opening else {}
+    extra = {"MACH_LAUNCH_OPEN": "1"} if opening else {}
     if switches:
-        extra["BLITZ_EXP"] = switches
+        extra["MACH_EXP"] = switches
     asked = start(udid, bundle, folder, extra)
     if not wait_done(folder, "launch"):
         stop(udid, bundle)
@@ -265,10 +265,10 @@ def command_launch(box, runs, opening=False):
 
 def command_ab(app_a, app_b, box, runs, opening):
     udid = boot()
-    bundles = [install(udid, app_a, "app.blitzbench.launcha"), install(udid, app_b, "app.blitzbench.launchb")]
+    bundles = [install(udid, app_a, "com.ahmedkhaleel.machbench.launcha"), install(udid, app_b, "com.ahmedkhaleel.machbench.launchb")]
     folders = [fresh(box, box + "-a"), fresh(box, box + "-b")]
     # For trying a change that sits behind a switch in a build made for the purpose: SWITCH_A / SWITCH_B become
-    # BLITZ_EXP in each side's launches. Unset, as for every committed build, they do nothing.
+    # MACH_EXP in each side's launches. Unset, as for every committed build, they do nothing.
     switches = [os.environ.get("SWITCH_A", ""), os.environ.get("SWITCH_B", "")]
     results = [[], []]
     for index in (0, 1):
@@ -362,7 +362,7 @@ def command_resume(box, rounds):
 
 
 def notify(udid, command):
-    sh("xcrun", "simctl", "spawn", udid, "notifyutil", "-p", "app.blitzbench.launch." + command)
+    sh("xcrun", "simctl", "spawn", udid, "notifyutil", "-p", "com.ahmedkhaleel.machbench.launch." + command)
 
 
 def command_webkill(box):
@@ -419,7 +419,7 @@ def command_notify(rounds):
     for mode in ("none", "good", "hang"):
         cache = os.path.join(RUN, "notify-avatars-" + mode)
         shutil.rmtree(cache, ignore_errors=True)
-        env = dict(os.environ, SIMCTL_CHILD_BLITZ_AVATAR_DIR=cache, SIMCTL_CHILD_BLITZ_OFFLINE="1")
+        env = dict(os.environ, SIMCTL_CHILD_MACH_AVATAR_DIR=cache, SIMCTL_CHILD_MACH_OFFLINE="1")
         count = 3 if mode == "hang" else rounds
         printed = subprocess.run(["xcrun", "simctl", "spawn", udid, binary, mode, str(count)], env=env, capture_output=True, text=True).stdout
         found = [json.loads(line) for line in printed.splitlines() if line.startswith("{")]
@@ -447,7 +447,7 @@ def command_shots(folder):
         sh("xcrun", "simctl", "io", udid, "screenshot", os.path.join(folder, f"first-{look}.png"))
         stop(udid, bundle)
         # Started but held before its first instruction, the app leaves the system's launch screen up to be pictured.
-        env = dict(os.environ, SIMCTL_CHILD_BLITZ_DATA_DIR=data, SIMCTL_CHILD_BLITZ_OFFLINE="1")
+        env = dict(os.environ, SIMCTL_CHILD_MACH_DATA_DIR=data, SIMCTL_CHILD_MACH_OFFLINE="1")
         sh("xcrun", "simctl", "launch", "--wait-for-debugger", udid, bundle, env=env)
         time.sleep(2.5)
         sh("xcrun", "simctl", "io", udid, "screenshot", os.path.join(folder, f"launch-{look}.png"))
@@ -462,7 +462,7 @@ def command_sample(box, out):
     folder = fresh(box, box)
     one_launch(udid, bundle, folder)
     stop(udid, bundle)
-    env = dict(os.environ, SIMCTL_CHILD_BLITZ_DATA_DIR=folder, SIMCTL_CHILD_BLITZ_OFFLINE="1")
+    env = dict(os.environ, SIMCTL_CHILD_MACH_DATA_DIR=folder, SIMCTL_CHILD_MACH_OFFLINE="1")
     # By process id, never by name: the installed app has the same name and must not be touched.
     launched = subprocess.run(["xcrun", "simctl", "launch", udid, bundle], env=env, capture_output=True, text=True).stdout
     pid = launched.strip().split(": ")[-1]

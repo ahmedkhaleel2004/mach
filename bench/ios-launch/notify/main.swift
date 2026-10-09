@@ -6,7 +6,7 @@
 //   notify-bench hang <rounds>     the picture's server accepts the connection and never answers (a bad network)
 //   notify-bench none <rounds>     the push names no picture and lookups are off: only the extension's own work
 //
-// Nothing leaves the machine: the only address used is 127.0.0.1, and BLITZ_OFFLINE=1 switches the Gravatar and
+// Nothing leaves the machine: the only address used is 127.0.0.1, and MACH_OFFLINE=1 switches the Gravatar and
 // site-icon lookups off.
 import Foundation
 import Network

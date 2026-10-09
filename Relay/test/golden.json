@@ -13,7 +13,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m1"
@@ -44,7 +44,7 @@
     "device": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m1"
@@ -114,7 +114,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m1"
@@ -215,7 +215,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m1"
@@ -286,7 +286,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m1"
@@ -317,7 +317,7 @@
     "device": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m1"
@@ -348,7 +348,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m2"
@@ -379,7 +379,7 @@
     "device": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m2"
@@ -410,7 +410,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m6"
@@ -441,7 +441,7 @@
     "device": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m6"
@@ -505,7 +505,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m3"
@@ -536,7 +536,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m4"
@@ -567,7 +567,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m5"
@@ -598,7 +598,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m6"
@@ -629,7 +629,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m7"
@@ -688,7 +688,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m2"
@@ -747,7 +747,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m1"
@@ -778,7 +778,7 @@
     "device": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m1"
@@ -809,7 +809,7 @@
     "device": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m1"
@@ -840,7 +840,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m2"
@@ -871,7 +871,7 @@
     "device": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m2"
@@ -908,7 +908,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m3"
@@ -939,7 +939,7 @@
     "device": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m3"
@@ -1043,7 +1043,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m1"
@@ -1080,7 +1080,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "w1"
@@ -1178,7 +1178,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m2"
@@ -1275,7 +1275,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m1"
@@ -1336,7 +1336,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m2"
@@ -1413,7 +1413,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m1"
@@ -1466,7 +1466,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m1"
@@ -1519,7 +1519,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "old"
@@ -1578,7 +1578,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m1"
@@ -1651,7 +1651,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "test"
@@ -1752,7 +1752,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m1"
@@ -1789,7 +1789,7 @@
     "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "authorization": "bearer <jwt>",
     "headers": {
-     "apns-topic": "app.blitzmail.ios",
+     "apns-topic": "com.ahmedkhaleel.mach.ios",
      "apns-push-type": "alert",
      "apns-priority": "10",
      "apns-collapse-id": "m2"

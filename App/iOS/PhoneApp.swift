@@ -1,6 +1,6 @@
 import AuthenticationServices
 import BackgroundTasks
-import BlitzCore
+import MachCore
 import QuickLook
 import SwiftUI
 import UIKit
@@ -64,7 +64,7 @@ struct MachApp: App {
 @MainActor
 @Observable
 final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding {
-    static let refreshTask = "app.blitzmail.refresh"
+    static let refreshTask = "com.ahmedkhaleel.mach.refresh"
     let model: AppModel?
     var hasClient = false
     @ObservationIgnored private var session: ASWebAuthenticationSession?
@@ -130,16 +130,16 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
     }
 
     #if DEBUG || BENCH
-    /// Lets a test script drive the app in the simulator: `xcrun simctl spawn booted notifyutil -p app.blitzmail.key.j`.
+    /// Lets a test script drive the app in the simulator: `xcrun simctl spawn booted notifyutil -p com.ahmedkhaleel.mach.key.j`.
     private func listenForTestKeys() {
-        // Any process on the device can post these, so they are only heard with the network off (`BLITZ_OFFLINE=1`).
+        // Any process on the device can post these, so they are only heard with the network off (`MACH_OFFLINE=1`).
         // A data folder of its own is not enough: it can hold a real signed-in account. A build that can reach
         // real mail listens to nothing.
         guard Bootstrap.offline else { return }
         let keys = ["j", "k", "e", "s", "u", "c", "r", "a", "f", "h", "z", "x", "o", "enter", "escape", "tab", "palette", "search", "send", "type",
                     "demoLeft", "demoRight", "style1", "style2", "style3", "lists", "face", "bigface", "discard", "drafts", "discardCompose"]
         for key in keys {
-            let name = "app.blitzmail.key.\(key)" as CFString
+            let name = "com.ahmedkhaleel.mach.key.\(key)" as CFString
             CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), nil, { _, _, name, _, _ in
                 guard let raw = name?.rawValue as String?, let key = raw.split(separator: ".").last.map(String.init) else { return }
                 DispatchQueue.main.async { PhoneHost.testKey?(key) }
@@ -208,7 +208,7 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
     /// so the sheet is closed by us once that listener hears from Google.
     private func startSignIn(_ url: URL) {
         // The sheet only ends by itself when the person closes it, which means they gave up.
-        let session = ASWebAuthenticationSession(url: url, callbackURLScheme: "blitzmail") { [weak self] _, _ in
+        let session = ASWebAuthenticationSession(url: url, callbackURLScheme: "mach") { [weak self] _, _ in
             Task { @MainActor in
                 guard let self, self.session != nil else { return }
                 self.session = nil

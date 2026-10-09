@@ -8,7 +8,7 @@
     bench/lean/lean.py compose synth|real             opening, typing, address lookup, saving, replying, sending
     bench/lean/lean.py avatars synth                  memory and scrolling when every sender has a (made-up) picture
 
-Needs: `export BLITZ_BENCH_DATA=<folder with synth/ and real/>` and the benchmark app (`bench/build.sh mac`; set APP=
+Needs: `export MACH_BENCH_DATA=<folder with synth/ and real/>` and the benchmark app (`bench/build.sh mac`; set APP=
 to use another build). Every run works on a throwaway copy of the mailbox under build/lean/, offline, on its own
 command channel, in the background, and stops the app it started by process id. Prints one JSON object per line.
 For the real mailbox only numbers are printed, and no conversation is ever opened: the conversation view loads a
@@ -26,7 +26,7 @@ import sys
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-CHANNEL = "app.blitzbench.lean"
+CHANNEL = "com.ahmedkhaleel.machbench.lean"
 APP = os.environ.get("APP") or os.path.join(ROOT, "build/dd-mac/Build/Products/Release/Mach.app")
 EXE = os.path.join(APP, "Contents/MacOS/Mach")
 WORK = os.path.join(ROOT, "build/lean")
@@ -110,7 +110,7 @@ class Run:
     def start(self, **environment):
         before = set(self._pids())
         extra = [part for key, value in environment.items() for part in ("--env", f"{key}={value}")]
-        subprocess.run(["open", "-g", "-n", APP, "--env", f"BLITZ_DATA_DIR={self.dir}", "--env", "BLITZ_OFFLINE=1", "--env", f"BLITZ_DEBUG_CHANNEL={self.channel}"] + extra, check=True)
+        subprocess.run(["open", "-g", "-n", APP, "--env", f"MACH_DATA_DIR={self.dir}", "--env", "MACH_OFFLINE=1", "--env", f"MACH_DEBUG_CHANNEL={self.channel}"] + extra, check=True)
         deadline = time.time() + 30
         while time.time() < deadline:
             new = [pid for pid in self._pids() if pid not in before]
@@ -232,7 +232,7 @@ def png(side, seed):
 
 def avatars(mailbox="synth"):
     """Memory and scrolling when every sender has a picture. Synth only: the pictures are made up here and kept in
-    the run's own folder (BLITZ_AVATAR_DIR), never in the real picture cache."""
+    the run's own folder (MACH_AVATAR_DIR), never in the real picture cache."""
     import hashlib
     if mailbox != "synth":
         sys.exit("avatars runs on synth only")
@@ -245,7 +245,7 @@ def avatars(mailbox="synth"):
         # The sizes real ones come in: mostly 128 (site icons), some 192 (profile pictures).
         with open(os.path.join(folder, hashlib.sha256(email.lower().encode()).hexdigest()[:32]), "wb") as handle:
             handle.write(png(192 if index % 5 == 0 else 128, index))
-    run.start(BLITZ_AVATAR_DIR=folder)
+    run.start(MACH_AVATAR_DIR=folder)
     try:
         run.settle()
         time.sleep(5)
@@ -403,8 +403,8 @@ def compose(mailbox):
 if __name__ == "__main__":
     if len(sys.argv) < 3 or sys.argv[2] not in ("synth", "real") or sys.argv[1] not in ("launch", "keys", "memory", "idle", "compose", "avatars"):
         sys.exit(__doc__)
-    if not os.environ.get("BLITZ_BENCH_DATA"):
-        sys.exit("set BLITZ_BENCH_DATA to the folder holding synth/ and real/")
+    if not os.environ.get("MACH_BENCH_DATA"):
+        sys.exit("set MACH_BENCH_DATA to the folder holding synth/ and real/")
     extra = [int(value) for value in sys.argv[3:]]
     for attempt in range(4):
         pending.clear()

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Reading mail on the iPhone, measured in a simulator of its own (BlitzBench-ios-thread, headless, never Simulator.app).
+# Reading mail on the iPhone, measured in a simulator of its own (MachBench-ios-thread, headless, never Simulator.app).
 #
 #   bench/ios-thread/run.sh synth                         every scenario on the made-up mailbox
 #   bench/ios-thread/run.sh real opens:10,fit             chosen scenarios on the copy of real mail (numbers only)
@@ -21,35 +21,35 @@
 #   next             archive with a conversation open: the next one shown
 #   pictures         the app's own picture addresses: requests and time per answer
 #
-# Only two simulators may be booted on this Mac at a time: the run waits for /tmp/blitz-sim.lock or
-# /tmp/blitz-sim2.lock, holds it for at most
+# Only two simulators may be booted on this Mac at a time: the run waits for /tmp/mach-sim.lock or
+# /tmp/mach-sim2.lock, holds it for at most
 # LIMIT seconds (keep each run under ten minutes: split long lists of scenarios) and always stops the app and gives
 # the lock back, also when it fails. A lock older than 15 minutes was left by a script that died, and is taken.
 #
 # Simulator wall-clock times are noisy and are not a phone's: compare two builds with ab.sh, and trust counts and
-# processor time first. The web view blocks every network request (BLITZ_OFFLINE=1).
+# processor time first. The web view blocks every network request (MACH_OFFLINE=1).
 set -eu
 umask 077
 cd "$(dirname "$0")/../.."
 box="${1:-synth}"
 spec="${2:-opens:10,unread:10,fit,prepare:5,scroll:3,back:10,pictures,next:12,reclaim:5,heavy:2}"
-export BLITZ_BENCH_DATA="${BLITZ_BENCH_DATA:-$PWD/build/data}"
+export MACH_BENCH_DATA="${MACH_BENCH_DATA:-$PWD/build/data}"
 app="${APP:-$(DD="${DD:-build/dd-ios-thread}" bench/build.sh ios)}"
-name=BlitzBench-ios-thread
-bundle=app.blitzbench.ios
+name=MachBench-ios-thread
+bundle=com.ahmedkhaleel.machbench.ios
 dir="$PWD/build/run/ios-thread-$box"
 bench/data.sh fresh "$box" "$dir"
 sqlite3 "$dir/mail.sqlite" < bench/thread-open/pick.sql > "$dir/bench-threads.tsv"
 if [ "$box" = synth ]; then
   # Made-up mail with real pictures in it, and a made-up picture for every sender the benchmark meets.
-  [ -x Core/.build/release/blitzbench ] || (cd Core && swift build -c release --product blitzbench > /dev/null 2>&1)
-  Core/.build/release/blitzbench pictures "$dir" >> "$dir/bench-threads.tsv"
+  [ -x Core/.build/release/machbench ] || (cd Core && swift build -c release --product machbench > /dev/null 2>&1)
+  Core/.build/release/machbench pictures "$dir" >> "$dir/bench-threads.tsv"
   python3 bench/ios-thread/seed_avatars.py "$dir/mail.sqlite" "$dir/bench-threads.tsv" "$dir/bench-avatars" > /dev/null
 fi
 device="$(xcrun simctl list devices | grep "$name (" | head -1 | sed -E 's/.*\(([0-9A-F-]{36})\).*/\1/' || true)"
 [ -n "$device" ] || device="$(xcrun simctl create "$name" "iPhone 18 Pro")"
 # Booting is the heavy part, so the simulator is booted once and left booted (shut it down yourself at the very end:
-# xcrun simctl shutdown BlitzBench-ios-thread). The lock only covers the time the app is measuring.
+# xcrun simctl shutdown MachBench-ios-thread). The lock only covers the time the app is measuring.
 xcrun simctl bootstatus "$device" -b > /dev/null
 xcrun simctl terminate "$device" "$bundle" 2>/dev/null || true
 xcrun simctl install "$device" "$app"
@@ -62,7 +62,7 @@ stop() {
 trap stop EXIT
 trap 'exit 1' INT TERM HUP
 while [ -z "$lock" ]; do
-  for candidate in /tmp/blitz-sim.lock /tmp/blitz-sim2.lock; do
+  for candidate in /tmp/mach-sim.lock /tmp/mach-sim2.lock; do
     # Left behind by a script that died more than 15 minutes ago.
     [ -z "$(find "$candidate" -maxdepth 0 -mmin +15 2>/dev/null)" ] || rm -rf "$candidate"
     if mkdir "$candidate" 2>/dev/null; then
@@ -76,8 +76,8 @@ echo "$$ ios-thread" > "$lock/owner"
 deadline=$(( $(date +%s) + ${LIMIT:-540} ))
 # The system hands a variable named __XPC_<name> to the processes an app starts, as <name>.
 for pair in ${WEBENV:-}; do export "SIMCTL_CHILD___XPC_$pair"; done
-SIMCTL_CHILD_BLITZ_DATA_DIR="$dir" SIMCTL_CHILD_BLITZ_OFFLINE=1 SIMCTL_CHILD_BLITZ_THREAD_BENCH="$spec" \
-  SIMCTL_CHILD_BLITZ_AVATAR_DIR="$dir/bench-avatars" SIMCTL_CHILD_BLITZ_DEBUG_CHANNEL=app.blitzbench.ios-thread \
+SIMCTL_CHILD_MACH_DATA_DIR="$dir" SIMCTL_CHILD_MACH_OFFLINE=1 SIMCTL_CHILD_MACH_THREAD_BENCH="$spec" \
+  SIMCTL_CHILD_MACH_AVATAR_DIR="$dir/bench-avatars" SIMCTL_CHILD_MACH_DEBUG_CHANNEL=com.ahmedkhaleel.machbench.ios-thread \
   xcrun simctl launch "$device" "$bundle" -noPrompts YES > /dev/null
 stops=0
 while [ "$(date +%s)" -lt "$deadline" ]; do

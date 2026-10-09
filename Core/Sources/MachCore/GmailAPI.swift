@@ -151,7 +151,7 @@ public final class GmailAPI: @unchecked Sendable {
     private let base = "https://gmail.googleapis.com/gmail/v1/users/me"
     private let decoder = JSONDecoder()
     private let quota: QuotaBucket
-    private static let debug = ProcessInfo.processInfo.environment["BLITZ_DEBUG"] != nil
+    private static let debug = ProcessInfo.processInfo.environment["MACH_DEBUG"] != nil
 
     public init(auth: Authenticator, transport: GmailTransport? = nil) {
         self.auth = auth

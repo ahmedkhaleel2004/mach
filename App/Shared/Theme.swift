@@ -1,4 +1,4 @@
-import BlitzCore
+import MachCore
 import SwiftUI
 
 #if os(macOS)

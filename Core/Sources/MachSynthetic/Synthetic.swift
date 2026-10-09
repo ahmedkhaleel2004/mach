@@ -1,4 +1,4 @@
-import BlitzCore
+import MachCore
 import Foundation
 #if canImport(ImageIO)
 import CoreGraphics

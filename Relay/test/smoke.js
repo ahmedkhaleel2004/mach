@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const here = new URL("..", import.meta.url).pathname;
-const folder = mkdtempSync(join(tmpdir(), "blitz-relay-"));
+const folder = mkdtempSync(join(tmpdir(), "mach-relay-"));
 copyFileSync(join(here, "worker.js"), join(folder, "worker.js"));
 writeFileSync(join(folder, "wrangler.toml"), readFileSync(join(here, "wrangler.toml"), "utf8").replace("REPLACE_WITH_YOUR_KV_NAMESPACE_ID", "local"));
 writeFileSync(join(folder, ".dev.vars"), "RELAY_SECRET=local-secret\nAPNS_KEY=none\nAPNS_KEY_ID=none\nAPNS_TEAM_ID=none\n");
@@ -38,7 +38,7 @@ try {
   check("a notification with the wrong secret is refused", (await fetch(base + "/pubsub/wrong", { method: "POST", body: "{}" })).status === 403);
 
   const heard = [];
-  const socket = new WebSocket(`ws://127.0.0.1:${port}/live?emails=someone@example.com`, { headers: { "X-Blitz-Secret": "local-secret" } });
+  const socket = new WebSocket(`ws://127.0.0.1:${port}/live?emails=someone@example.com`, { headers: { "X-Mach-Secret": "local-secret" } });
   await new Promise((resolve, reject) => {
     socket.onopen = resolve;
     socket.onerror = () => reject(new Error("the app connection was refused"));

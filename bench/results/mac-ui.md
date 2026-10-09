@@ -7,7 +7,7 @@ the same machine load. Raw summaries: `bench/results/mac-ui/final-synth.json` an
 
 ## Run it again
 
-    export BLITZ_BENCH_DATA=<folder with the synth and real masters>
+    export MACH_BENCH_DATA=<folder with the synth and real masters>
     bench/build.sh mac                                   # the build under test
     bench/mac-ui/run.py all --data synth                 # every scenario, one table
     bench/mac-ui/run.py all --data real

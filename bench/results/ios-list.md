@@ -1,6 +1,6 @@
 # iPhone list frontier: results
 
-Measured in a headless simulator (iPhone 18 Pro, iOS 27.0, device `BlitzBench-ios-list`) on a Mac whose load
+Measured in a headless simulator (iPhone 18 Pro, iOS 27.0, device `MachBench-ios-list`) on a Mac whose load
 average was between 60 and 470 for most of the session. **Every result claimed here is an exact count** (view
 `body` evaluations by type, layers drawn or made, SQL statements on the main thread, points a row moved).
 Processor-time columns are printed by the scripts but were not usable at that load and are not claimed.
@@ -16,7 +16,7 @@ shared and time ran out; the counts do not depend on the mail, but that is an in
     bench/ios-list/run.sh synth "scroll loadmore switch search memory lab eq"      # one build
     APP=<app> bench/ios-list/shots.sh <folder>;  bench/ios-list/shots.sh diff <a> <b>     # screenshots, byte compare
 
-Scenarios are in `App/iOS/ListBench.swift` (BENCH builds only, started with `BLITZ_LIST_BENCH`); the row
+Scenarios are in `App/iOS/ListBench.swift` (BENCH builds only, started with `MACH_LIST_BENCH`); the row
 experiments in `ListLab.swift`; what SwiftUI skips in `ListEqLab.swift`. The scripts take one of the two
 simulator locks in `/tmp` per scenario and give it back in a trap.
 

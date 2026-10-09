@@ -1,7 +1,7 @@
-import BlitzCore
+import MachCore
 import Foundation
 
-// blitzbench compose <data-dir>
+// machbench compose <data-dir>
 //
 // What writing mail costs below the screen: building a reply (the quoted original), the save that follows a pause
 // in typing, the address lookup behind the suggestions, finding the name to send under, and putting a message in

@@ -1,5 +1,5 @@
 #if DEBUG || BENCH
-import BlitzCore
+import MachCore
 import SwiftUI
 import UIKit
 import UserNotifications
@@ -18,7 +18,7 @@ import WebKit
 ///   launch.firstFrame  first screen refresh at which the list's rows have been laid out (or the welcome screen is up)
 ///   launch.idle        the main thread first has nothing to do after that: a tap would be handled from here
 ///   thread_web_ready   the conversation page can take a conversation
-///   launch.openShown   (BLITZ_LAUNCH_OPEN=1) the conversation asked for at launch has been painted
+///   launch.openShown   (MACH_LAUNCH_OPEN=1) the conversation asked for at launch has been painted
 @MainActor
 enum LaunchBench {
     private static weak var model: AppModel?
@@ -69,7 +69,7 @@ enum LaunchBench {
         watchForeground()
         // Nothing outside can drive a build that is looking at real mail.
         if Bootstrap.offline { listenForCommands() }
-        if ProcessInfo.processInfo.environment["BLITZ_LAUNCH_OPEN"] == "1" {
+        if ProcessInfo.processInfo.environment["MACH_LAUNCH_OPEN"] == "1" {
             opening = true
             // A tapped notification is handed to `Notifier` once launch has finished; this is the earliest that can be.
             DispatchQueue.main.async {
@@ -184,7 +184,7 @@ enum LaunchBench {
 
     private static func listenForCommands() {
         for command in ["webkill", "open", "relay"] {
-            let name = "app.blitzbench.launch.\(command)" as CFString
+            let name = "com.ahmedkhaleel.machbench.launch.\(command)" as CFString
             CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), nil, { _, _, name, _, _ in
                 guard let raw = name?.rawValue as String?, let command = raw.split(separator: ".").last.map(String.init) else { return }
                 DispatchQueue.main.async { MainActor.assumeIsolated { LaunchBench.run(command) } }

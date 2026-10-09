@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src * data: blob: blitz-cid: blitz-avatar: blitz-att:; media-src *; font-src * data:; style-src 'unsafe-inline' *; script-src 'nonce-__NONCE__'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src * data: blob: mach-cid: mach-avatar: mach-att:; media-src *; font-src * data:; style-src 'unsafe-inline' *; script-src 'nonce-__NONCE__'; form-action 'none'; base-uri 'none'">
 <style>
 :root {
   color-scheme: light dark;
@@ -85,7 +85,7 @@ button:active { opacity: 0.6; }
   var boxes = {};   // { node, key, open }: the message's element, a fingerprint of all it shows, whether its mail said "open"
 
   function post(message) {
-    try { window.webkit.messageHandlers.blitz.postMessage(message); } catch (e) {}
+    try { window.webkit.messageHandlers.mach.postMessage(message); } catch (e) {}
   }
   function el(tag, cls, text) {
     var node = document.createElement(tag);
@@ -449,7 +449,7 @@ button:active { opacity: 0.6; }
     });
   }
 
-  window.blitz = {
+  window.mach = {
     // `benchId` is only passed by benchmark builds.
     render: function (payload, benchId) {
       var started = benchId ? performance.now() : 0;

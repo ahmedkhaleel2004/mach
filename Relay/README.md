@@ -7,7 +7,7 @@ It stores a refresh token for each account it watches, so it can read that accou
 ## Set up
 
 1. In the Apple developer portal create a key with **Apple Push Notifications service** enabled and download its `.p8`.
-2. `wrangler kv namespace create blitzmail-relay`, and put the id in `wrangler.toml`.
+2. `wrangler kv namespace create mach-relay`, and put the id in `wrangler.toml`.
 3. `wrangler deploy`, then set the secrets:
    - `wrangler secret put RELAY_SECRET` (any long random string)
    - `wrangler secret put APNS_KEY` (paste the `.p8` text), `APNS_KEY_ID`, `APNS_TEAM_ID`
@@ -23,16 +23,16 @@ Gmail can tell the relay the moment mail arrives. In the Google Cloud project th
 
 ```sh
 gcloud services enable pubsub.googleapis.com
-gcloud pubsub topics create blitzmail
-gcloud pubsub topics add-iam-policy-binding blitzmail \
+gcloud pubsub topics create mach
+gcloud pubsub topics add-iam-policy-binding mach \
   --member=serviceAccount:gmail-api-push@system.gserviceaccount.com --role=roles/pubsub.publisher
-gcloud pubsub subscriptions create blitzmail-relay --topic blitzmail \
+gcloud pubsub subscriptions create mach-relay --topic mach \
   --push-endpoint='https://<your-worker>.workers.dev/pubsub/<RELAY_SECRET>'
 ```
 
-Then set `TOPICS` in `wrangler.toml` to `{"<project number>": "projects/<project id>/topics/blitzmail"}` and deploy again. The project number is the digits before the first `-` in the OAuth client id. An account signed in under a different Google project keeps using the once-a-minute check.
+Then set `TOPICS` in `wrangler.toml` to `{"<project number>": "projects/<project id>/topics/mach"}` and deploy again. The project number is the digits before the first `-` in the OAuth client id. An account signed in under a different Google project keeps using the once-a-minute check.
 
-`POST /test` with the `X-Blitz-Secret` header sends a test banner to every registered phone.
+`POST /test` with the `X-Mach-Secret` header sends a test banner to every registered phone.
 
 ## Checking a change without deploying
 

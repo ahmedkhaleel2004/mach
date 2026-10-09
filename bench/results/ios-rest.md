@@ -31,7 +31,7 @@ looks shots warm:<how>), two builds side by side with `bench/ios-rest/ab.sh <bef
 | Extra full sync + WebSocket reconnect per inactive to active blip | by reading the code | 1 + 1 | 0 + 0 | gone | count |
 | Accounts synced per push, N accounts | by reading the code | N | 1 | | count |
 | Asset catalog in the iPhone app | `ls -l Mach.app/Assets.car` | 82,328 B | 41,272 B | -50% | bytes |
-| Test hook reachable on a build that can reach real mail | by reading the code | yes | no (needs `BLITZ_OFFLINE=1`) | | |
+| Test hook reachable on a build that can reach real mail | by reading the code | yes | no (needs `MACH_OFFLINE=1`) | | |
 
 Note 1: these times were taken on a build that also split the compose fields into separate views (dropped, see
 below); the kept change is the part that removed the root-view rebuild. The final build's counts are in the table

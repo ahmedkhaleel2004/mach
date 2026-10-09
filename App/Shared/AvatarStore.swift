@@ -63,7 +63,7 @@ final class AvatarStore: @unchecked Sendable {
         var url = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("avatars4", isDirectory: true)
         #if DEBUG || BENCH
         // A benchmark brings its own made-up pictures, and so never reads or writes the real ones.
-        if let custom = ProcessInfo.processInfo.environment["BLITZ_AVATAR_DIR"], !custom.isEmpty { url = URL(fileURLWithPath: custom, isDirectory: true) }
+        if let custom = ProcessInfo.processInfo.environment["MACH_AVATAR_DIR"], !custom.isEmpty { url = URL(fileURLWithPath: custom, isDirectory: true) }
         #endif
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
@@ -194,7 +194,7 @@ final class AvatarStore: @unchecked Sendable {
             return nil
         }
         // Benchmarks never look anything up (the extension shares this file, so it reads the setting itself).
-        if ProcessInfo.processInfo.environment["BLITZ_OFFLINE"] == "1" { return nil }
+        if ProcessInfo.processInfo.environment["MACH_OFFLINE"] == "1" { return nil }
         if let data = await brandLogo(for: email) {
             try? data.write(to: file, options: .atomic)
             try? Data().write(to: brand, options: .atomic)

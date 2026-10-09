@@ -1,5 +1,5 @@
 import XCTest
-@testable import BlitzCore
+@testable import MachCore
 
 final class ParsingTests: XCTestCase {
     func testAddressList() {
@@ -87,11 +87,11 @@ final class ParsingTests: XCTestCase {
         let many = (0..<60).map { EmailAddress(name: "Person Number \($0)", email: "person\($0)@example.com") }
         let references = (0..<40).map { "<message-\($0)-abcdefghijklmnop@mail.example.com>" }.joined(separator: " ")
         let message = OutgoingMessage(from: EmailAddress(name: "Me", email: "me@x.com"), to: many, subject: String(repeating: "word ", count: 300),
-                                      text: "t", html: "h", references: references, messageId: "<abc@mail.blitzmail.app>")
+                                      text: "t", html: "h", references: references, messageId: "<abc@mail.mach.invalid>")
         let raw = String(decoding: message.rfc822(), as: UTF8.self)
         let head = raw.components(separatedBy: "\r\n\r\n")[0]
         XCTAssertLessThan(head.components(separatedBy: "\r\n").map(\.count).max() ?? 0, 200)
-        XCTAssertTrue(head.contains("Message-ID: <abc@mail.blitzmail.app>"))
+        XCTAssertTrue(head.contains("Message-ID: <abc@mail.mach.invalid>"))
         // Unfolding gives back every recipient.
         let unfolded = head.replacingOccurrences(of: "\r\n ", with: " ")
         let toLine = unfolded.components(separatedBy: "\r\n").first { $0.hasPrefix("To: ") } ?? ""
@@ -143,7 +143,7 @@ final class StoreTests: XCTestCase {
     let me = "me@x.com"
 
     override func setUpWithError() throws {
-        let path = FileManager.default.temporaryDirectory.appendingPathComponent("blitz-\(UUID().uuidString).sqlite").path
+        let path = FileManager.default.temporaryDirectory.appendingPathComponent("mach-\(UUID().uuidString).sqlite").path
         store = try Store(path: path)
         try store.saveAccount(Account(id: me, name: "Me"))
     }

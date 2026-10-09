@@ -1,6 +1,6 @@
 # Sync: results
 
-Branch `perf-sync`. Gmail is played by `Core/Sources/BlitzFake` (in memory, 120 ms per request, every request
+Branch `perf-sync`. Gmail is played by `Core/Sources/MachFake` (in memory, 120 ms per request, every request
 logged), so nothing here touched the network. Every number is from `bench/sync/run.sh <synth|real> <name>`, which
 runs on a throwaway copy of the mailbox. "Before" is the library as it was at 890c073 (the harness commit) built
 with the same harness, run back to back with "after" on 2026-10-08/09. The machine was shared with five other
@@ -79,7 +79,7 @@ not wait on the allowance unless the background has drained it below 20 units.
     bench/sync/run.sh synth            # all six, about 4 minutes; `real` for the snapshot
     bench/sync/run.sh synth first50    # one of: signal cpu outbox poll first50 initial
 
-For "before", check out 890c073's `Core/Sources/BlitzCore/{Sync,MIME,MailService}.swift` under the current
-`Core/Sources/blitzbench` and `Core/Sources/BlitzFake` (replace `mail.livePollInterval` with `60.0` in SyncBench.swift)
+For "before", check out 890c073's `Core/Sources/MachCore/{Sync,MIME,MailService}.swift` under the current
+`Core/Sources/machbench` and `Core/Sources/MachFake` (replace `mail.livePollInterval` with `60.0` in SyncBench.swift)
 and run the same commands. Raw lines: `sync-baseline-*.jsonl` (first baseline, older harness, loaded machine) and
 `sync-final-*.txt` (before -> after, same harness).

@@ -64,7 +64,7 @@ after a paid security review, which Mach has not been through yet.
 
 1. In the [Google Cloud console](https://console.cloud.google.com) create a project, enable the **Gmail API** and the
    **People API**, and create an OAuth client of type **Desktop app**. Add yourself as a test user.
-2. Save the client's JSON as `~/Library/Application Support/Blitzmail/OAuthClient.json` and open Mach.
+2. Save the client's JSON as `~/Library/Application Support/Mach/OAuthClient.json` and open Mach.
 
 ### iPhone
 

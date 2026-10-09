@@ -18,7 +18,7 @@ enum Bench {
         return Date().timeIntervalSince1970 * 1000 - started
     }
 
-    private static let queue = DispatchQueue(label: "blitz.bench")
+    private static let queue = DispatchQueue(label: "mach.bench")
     private static let file = Bootstrap.directory.appendingPathComponent("bench.jsonl")
 
     static func record(_ metric: String, ms: Double, _ extra: [String: Any] = [:]) {

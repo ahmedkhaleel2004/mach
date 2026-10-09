@@ -1,12 +1,12 @@
 #!/bin/sh
 # Builds a benchmark copy of the app: optimized, with the test hooks compiled in, under its own bundle id
-# (app.blitzbench.*) so it shares no settings, caches or keychain items with the installed Mach.
+# (com.ahmedkhaleel.machbench.*) so it shares no settings, caches or keychain items with the installed Mach.
 #
 #   bench/build.sh mac            -> prints the path of Mach.app
 #   bench/build.sh ios            -> prints the path of the simulator Mach.app
 #   DD=build/dd-mine bench/build.sh mac     to use another build folder
 #
-# A benchmark build refuses to start unless BLITZ_DATA_DIR is set, so it cannot open real mail.
+# A benchmark build refuses to start unless MACH_DATA_DIR is set, so it cannot open real mail.
 set -eu
 cd "$(dirname "$0")/.."
 platform="${1:-mac}"
@@ -15,7 +15,7 @@ for file in OAuthClient.json; do
 done
 mkdir -p build
 (cd App && xcodegen generate >/dev/null)
-common="-project App/Mach.xcodeproj -configuration Release BLITZ_BUNDLE_BASE=app.blitzbench CODE_SIGNING_ALLOWED=NO"
+common="-project App/Mach.xcodeproj -configuration Release MACH_BUNDLE_BASE=com.ahmedkhaleel.machbench CODE_SIGNING_ALLOWED=NO"
 flags='SWIFT_ACTIVE_COMPILATION_CONDITIONS=$(inherited) BENCH'
 if [ "$platform" = mac ]; then
   dd="${DD:-build/dd-mac}"

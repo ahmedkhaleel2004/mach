@@ -1,5 +1,5 @@
 #if DEBUG || BENCH
-import BlitzCore
+import MachCore
 import SQLite3
 import SwiftUI
 import UIKit
@@ -7,7 +7,7 @@ import UIKit
 /// Benchmarks for the parts of the phone app that are not launch, the list or the open conversation: writing mail,
 /// the search field, the overlays, memory, and what the app does while idle. Compiled out of the app people use.
 ///
-/// `BLITZ_REST_BENCH="compose search"` at launch runs the named scenarios in order and appends their numbers to
+/// `MACH_REST_BENCH="compose search"` at launch runs the named scenarios in order and appends their numbers to
 /// `bench.jsonl` in the data folder, ending with a `rest_bench_done` line. See `bench/ios-rest/run.sh`.
 ///
 /// Typing goes through the real text field (`insertText` on whichever field has the keyboard), so a letter costs
@@ -16,12 +16,12 @@ import UIKit
 @MainActor
 enum RestBench {
     static func runFromEnvironment(model: AppModel) {
-        guard let spec = ProcessInfo.processInfo.environment["BLITZ_REST_BENCH"], !spec.isEmpty, Bootstrap.offline else { return }
+        guard let spec = ProcessInfo.processInfo.environment["MACH_REST_BENCH"], !spec.isEmpty, Bootstrap.offline else { return }
         watchPhases()
         Task { @MainActor in
             // Let launch finish first: rows on screen, the conversation page loaded.
             await wait(upTo: 10) { !model.rows.isEmpty }
-            for _ in 0..<300 where (try? await model.web.webView.evaluateJavaScript("typeof window.blitz")) as? String != "object" { await frames(2) }
+            for _ in 0..<300 where (try? await model.web.webView.evaluateJavaScript("typeof window.mach")) as? String != "object" { await frames(2) }
             await frames(30)
             // Past the moment the app warms the text system by itself (1.5 s after launch), so every run starts alike.
             await sleep(seconds: 2.5)

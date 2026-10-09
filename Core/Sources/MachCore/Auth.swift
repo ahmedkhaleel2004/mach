@@ -52,7 +52,7 @@ public protocol TokenStore: Sendable {
 public struct KeychainTokenStore: TokenStore {
     private let service: String
 
-    public init(service: String = "app.blitzmail.tokens") {
+    public init(service: String = "com.ahmedkhaleel.mach.tokens") {
         self.service = service
     }
 
@@ -260,7 +260,7 @@ public enum OAuth {
 /// Accepts the single browser redirect that ends a sign-in.
 private final class LoopbackListener: @unchecked Sendable {
     private let listener: NWListener
-    private let queue = DispatchQueue(label: "blitz.oauth.loopback")
+    private let queue = DispatchQueue(label: "mach.oauth.loopback")
     private var continuation: CheckedContinuation<[String: String], Error>?
     private var result: Result<[String: String], Error>?
     private var started = false

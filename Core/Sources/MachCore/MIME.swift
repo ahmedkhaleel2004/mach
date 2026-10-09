@@ -657,7 +657,7 @@ public struct OutgoingMessage: Sendable {
         lines = lines.map(Self.fold)
         lines.append("MIME-Version: 1.0")
 
-        let altBoundary = "blitz-alt-\(UUID().uuidString)"
+        let altBoundary = "mach-alt-\(UUID().uuidString)"
         var alternative = ""
         alternative += "--\(altBoundary)\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\nContent-Transfer-Encoding: base64\r\n\r\n"
         alternative += Self.wrapped(Data(text.utf8)) + "\r\n"
@@ -670,7 +670,7 @@ public struct OutgoingMessage: Sendable {
             lines.append("Content-Type: multipart/alternative; boundary=\"\(altBoundary)\"")
             body = alternative
         } else {
-            let mixedBoundary = "blitz-mixed-\(UUID().uuidString)"
+            let mixedBoundary = "mach-mixed-\(UUID().uuidString)"
             lines.append("Content-Type: multipart/mixed; boundary=\"\(mixedBoundary)\"")
             body += "--\(mixedBoundary)\r\nContent-Type: multipart/alternative; boundary=\"\(altBoundary)\"\r\n\r\n"
             body += alternative

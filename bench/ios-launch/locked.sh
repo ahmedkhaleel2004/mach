@@ -4,14 +4,14 @@
 #   bench/ios-launch/locked.sh launch synth 15
 #   bench/ios-launch/locked.sh -f <file>       one bench.py command a line: `<output file> <switch for side B of an ab, or -> <arguments...>`
 #
-# Waits for /tmp/blitz-sim.lock or /tmp/blitz-sim2.lock (taking one over if its owner has been gone 15 minutes), gives the work at most
+# Waits for /tmp/mach-sim.lock or /tmp/mach-sim2.lock (taking one over if its owner has been gone 15 minutes), gives the work at most
 # LIMIT seconds (default 540), and always gives the lock back, even when cut short.
 set -u
 cd "$(dirname "$0")/../.."
 # Two simulators may run at once, so there are two locks: whichever is free.
 lock=""
 while [ -z "$lock" ]; do
-  for candidate in /tmp/blitz-sim.lock /tmp/blitz-sim2.lock; do
+  for candidate in /tmp/mach-sim.lock /tmp/mach-sim2.lock; do
     if [ -n "$(find "$candidate" -maxdepth 0 -mmin +15 2>/dev/null)" ]; then rm -rf "$candidate"; fi
     if mkdir "$candidate" 2>/dev/null; then lock="$candidate"; break; fi
   done
