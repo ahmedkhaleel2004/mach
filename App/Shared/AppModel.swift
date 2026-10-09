@@ -266,6 +266,8 @@ final class AppModel {
     /// Set by each platform: how to show a web page, a sign-in page and a downloaded file.
     var openURL: (URL) -> Void = { _ in }
     var openSignIn: (URL) -> Void = { _ in }
+    /// iPhone: shows Google's page in the system sign-in sheet and returns the address it came back with.
+    var presentSignIn: @MainActor (URL, String) async throws -> URL = { _, _ in throw CancellationError() }
     var signInFinished: () -> Void = {}
     /// The attachment being looked at in Quick Look, if any.
     var previewFile: URL?
@@ -1607,10 +1609,15 @@ final class AppModel {
         signingIn = true
         signInTask = Task {
             do {
+                #if os(iOS)
+                let present = presentSignIn
+                let account = try await service.signIn { url, scheme in try await present(url, scheme) }
+                #else
                 let opener = openSignIn
                 let account = try await service.signIn { url in
                     Task { @MainActor in opener(url) }
                 }
+                #endif
                 guard !Task.isCancelled else { return }
                 signInFinished()
                 signingIn = false

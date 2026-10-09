@@ -187,12 +187,24 @@ public final class MailService: @unchecked Sendable {
         return account
     }
 
+    #if os(macOS)
     public func signIn(loginHint: String? = nil, open: @escaping @Sendable (URL) -> Void) async throws -> Account {
         guard !offline else { throw URLError(.notConnectedToInternet) }
         return try await addAccount(tokens: try await OAuth.signIn(client: client, loginHint: loginHint, open: open))
     }
+    #endif
+
+    /// The iPhone's sign-in, with an iOS client: see `OAuth.signIn(client:loginHint:scope:present:)`.
+    public func signIn(loginHint: String? = nil, present: @escaping @Sendable (URL, String) async throws -> URL) async throws -> Account {
+        guard !offline else { throw URLError(.notConnectedToInternet) }
+        return try await addAccount(tokens: try await OAuth.signIn(client: client, loginHint: loginHint, present: present))
+    }
 
     public func removeAccount(_ id: String) throws {
+        // Signing out also takes the app's access away at Google. Asked for behind the person's back, never waited for.
+        if !offline, transport == nil, let saved = tokens.load(account: id) {
+            Task.detached(priority: .utility) { await OAuth.revoke(saved.refreshToken) }
+        }
         tokens.delete(account: id)
         let running = lock.withLock {
             authenticators[id] = nil

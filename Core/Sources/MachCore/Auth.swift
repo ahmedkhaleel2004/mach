@@ -1,6 +1,8 @@
 import CryptoKit
 import Foundation
+#if os(macOS)
 import Network
+#endif
 import Security
 
 public struct OAuthClient: Codable, Sendable {
@@ -12,17 +14,52 @@ public struct OAuthClient: Codable, Sendable {
         self.clientSecret = clientSecret
     }
 
-    /// Reads either our own `{clientId, clientSecret}` file or the JSON Google lets you download for a desktop client.
-    public static func load(from data: Data) -> OAuthClient? {
-        if let direct = try? JSONDecoder().decode(OAuthClient.self, from: data) { return direct }
-        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
-        for key in ["installed", "web"] {
-            if let inner = object[key] as? [String: Any], let id = inner["client_id"] as? String {
-                return OAuthClient(clientId: id, clientSecret: inner["client_secret"] as? String)
-            }
+    /// The two kinds of key Google hands out for an app like this one. A Mac uses a "Desktop app" key, which comes
+    /// with a secret and answers on a port of this machine. An iPhone uses an "iOS" key, which has no secret and
+    /// answers through an address only this app opens.
+    public enum Kind: Sendable {
+        case desktop, phone
+
+        public static var current: Kind {
+            #if os(iOS)
+            return .phone
+            #else
+            return .desktop
+            #endif
         }
-        return nil
     }
+
+    /// Reads any of the shapes a key file comes in:
+    /// - the JSON Google lets you download for a Desktop client: `{"installed": {"client_id": …, "client_secret": …}}`
+    /// - an iOS client, which is only an id: `{"client_id": "….apps.googleusercontent.com"}`
+    ///   (the `.plist` Google offers for an iOS client reads too, by its `CLIENT_ID`)
+    /// - both in one file, for a checkout that builds the Mac and the iPhone app: the Desktop JSON with
+    ///   `"ios": {"client_id": …}` added beside `"installed"`
+    /// - our own `{"clientId": …, "clientSecret": …}`
+    /// When a file holds more than one, each platform takes its own kind.
+    public static func load(from data: Data, for kind: Kind = .current) -> OAuthClient? {
+        if let direct = try? JSONDecoder().decode(OAuthClient.self, from: data) { return direct }
+        let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        guard let object = json ?? (try? PropertyListSerialization.propertyList(from: data, format: nil)) as? [String: Any] else { return nil }
+        func client(_ entry: Any?, secret: Bool) -> OAuthClient? {
+            guard let entry = entry as? [String: Any], let id = (entry["client_id"] ?? entry["CLIENT_ID"]) as? String, !id.isEmpty else { return nil }
+            return OAuthClient(clientId: id, clientSecret: secret ? entry["client_secret"] as? String : nil)
+        }
+        let desktop = client(object["installed"], secret: true) ?? client(object["web"], secret: true)
+        let phone = client(object["ios"], secret: false) ?? client(object, secret: false)
+        return kind == .phone ? phone ?? desktop : desktop ?? phone
+    }
+
+    /// The address scheme Google sends an iOS client's sign-in back to: the client id written backwards,
+    /// `com.googleusercontent.apps.<id>`. Nil when the id is not one of Google's.
+    public var redirectScheme: String? {
+        let suffix = ".apps.googleusercontent.com"
+        guard clientId.hasSuffix(suffix), clientId.count > suffix.count else { return nil }
+        return "com.googleusercontent.apps." + clientId.dropLast(suffix.count)
+    }
+
+    /// True for a key an iPhone can sign in with: no secret, and an address to come back to.
+    public var worksOnPhone: Bool { clientSecret == nil && redirectScheme != nil }
 }
 
 public struct TokenSet: Codable, Sendable {
@@ -159,10 +196,7 @@ public actor Authenticator {
     }
 
     private func refresh(_ current: TokenSet) async throws -> String {
-        let client = current.client ?? self.client
-        var form = ["grant_type": "refresh_token", "refresh_token": current.refreshToken, "client_id": client.clientId]
-        if let secret = client.clientSecret { form["client_secret"] = secret }
-        let response = try await OAuth.postToken(form)
+        let response = try await OAuth.postToken(OAuth.refreshForm(client: current.client ?? self.client, refreshToken: current.refreshToken))
         guard let access = response.access_token else {
             if response.error == "invalid_grant" { throw AuthError.signedOut }
             throw AuthError.failed(response.error_description ?? response.error ?? "Could not refresh the Google sign-in.")
@@ -185,31 +219,44 @@ public enum OAuth {
     ].joined(separator: " ")
 
     fileprivate static func postToken(_ form: [String: String]) async throws -> TokenResponse {
-        var request = URLRequest(url: URL(string: "https://oauth2.googleapis.com/token")!)
+        let (data, _) = try await URLSession.shared.data(for: formRequest("https://oauth2.googleapis.com/token", form))
+        return try JSONDecoder().decode(TokenResponse.self, from: data)
+    }
+
+    static func formRequest(_ address: String, _ form: [String: String]) -> URLRequest {
+        var request = URLRequest(url: URL(string: address)!)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         var allowed = CharacterSet.alphanumerics
         allowed.insert(charactersIn: "-._~")
-        request.httpBody = Data(form.map { key, value in
+        request.httpBody = Data(form.sorted { $0.key < $1.key }.map { key, value in
             "\(key)=\(value.addingPercentEncoding(withAllowedCharacters: allowed) ?? value)"
         }.joined(separator: "&").utf8)
-        let (data, _) = try await URLSession.shared.data(for: request)
-        return try JSONDecoder().decode(TokenResponse.self, from: data)
+        return request
     }
 
-    /// Runs Google's sign-in in a browser and returns the tokens.
-    ///
-    /// Google sends the browser back to a one-shot listener on this device, so no server is involved.
-    /// `open` must show the URL to the person (the default browser, or an in-app browser sheet).
-    public static func signIn(client: OAuthClient, loginHint: String? = nil, scope: String = OAuth.scope,
-                              open: @escaping @Sendable (URL) -> Void) async throws -> TokenSet {
-        let verifier = randomString(64)
-        let challenge = Data(SHA256.hash(data: Data(verifier.utf8))).base64URLString()
-        let state = randomString(24)
-        let listener = try LoopbackListener(state: state)
-        let port = try await listener.start()
-        let redirect = "http://127.0.0.1:\(port)"
+    // What is sent to Google's token address. A key with no secret (an iOS client) sends none: the code verifier
+    // is what proves the request comes from the app that started the sign-in.
 
+    static func refreshForm(client: OAuthClient, refreshToken: String) -> [String: String] {
+        var form = ["grant_type": "refresh_token", "refresh_token": refreshToken, "client_id": client.clientId]
+        if let secret = client.clientSecret { form["client_secret"] = secret }
+        return form
+    }
+
+    static func codeForm(client: OAuthClient, code: String, redirect: String, verifier: String) -> [String: String] {
+        var form = ["grant_type": "authorization_code", "code": code, "client_id": client.clientId,
+                    "redirect_uri": redirect, "code_verifier": verifier]
+        if let secret = client.clientSecret { form["client_secret"] = secret }
+        return form
+    }
+
+    static func challenge(for verifier: String) -> String {
+        Data(SHA256.hash(data: Data(verifier.utf8))).base64URLString()
+    }
+
+    static func authorizationURL(client: OAuthClient, redirect: String, challenge: String, state: String,
+                                 loginHint: String?, scope: String) -> URL {
         var components = URLComponents(string: "https://accounts.google.com/o/oauth2/v2/auth")!
         components.queryItems = [
             URLQueryItem(name: "client_id", value: client.clientId),
@@ -223,7 +270,79 @@ public enum OAuth {
             URLQueryItem(name: "state", value: state),
         ]
         if let loginHint { components.queryItems?.append(URLQueryItem(name: "login_hint", value: loginHint)) }
-        open(components.url!)
+        return components.url!
+    }
+
+    /// Where an iOS client's sign-in comes back to, or nil if the key is not an iOS one.
+    public static func phoneRedirect(for client: OAuthClient) -> String? {
+        client.redirectScheme.map { $0 + ":/oauth2redirect" }
+    }
+
+    /// What Google put on the address it sent the sign-in back to.
+    static func callbackParameters(_ url: URL) -> [String: String] {
+        var parameters: [String: String] = [:]
+        for item in URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? [] { parameters[item.name] = item.value ?? "" }
+        return parameters
+    }
+
+    /// The sign-in code out of Google's reply, once the reply is known to answer this attempt.
+    static func code(from callback: [String: String], state: String) throws -> String {
+        guard callback["state"] == state else { throw AuthError.failed("The sign-in reply did not match the request.") }
+        guard let code = callback["code"] else {
+            throw AuthError.failed(callback["error"] == "access_denied" ? "Sign-in was cancelled." : "Google did not return a sign-in code.")
+        }
+        return code
+    }
+
+    private static func exchange(_ form: [String: String]) async throws -> TokenSet {
+        let response = try await postToken(form)
+        guard let access = response.access_token, let refresh = response.refresh_token else {
+            throw AuthError.failed(response.error_description ?? response.error ?? "Google did not return tokens.")
+        }
+        return TokenSet(refreshToken: refresh, accessToken: access, expiry: Date().addingTimeInterval(response.expires_in ?? 3000))
+    }
+
+    /// Runs Google's sign-in for an iOS client and returns the tokens.
+    ///
+    /// `present` shows Google's page in the system sign-in sheet and returns the address the sheet came back with:
+    /// it is given the page and the address scheme to wait for. Nothing listens on the network, and no secret is sent.
+    public static func signIn(client: OAuthClient, loginHint: String? = nil, scope: String = OAuth.scope,
+                              present: @escaping @Sendable (URL, String) async throws -> URL) async throws -> TokenSet {
+        guard client.clientSecret == nil, let scheme = client.redirectScheme, let redirect = phoneRedirect(for: client) else {
+            throw AuthError.failed("This build's Google sign-in key is not an iOS one.")
+        }
+        let verifier = randomString(64)
+        let state = randomString(24)
+        let page = authorizationURL(client: client, redirect: redirect, challenge: challenge(for: verifier), state: state,
+                                    loginHint: loginHint, scope: scope)
+        let callback = callbackParameters(try await present(page, scheme))
+        return try await exchange(codeForm(client: client, code: try code(from: callback, state: state), redirect: redirect, verifier: verifier))
+    }
+
+    /// Tells Google to forget a sign-in, so the token is worth nothing once the account is signed out here.
+    /// Best effort: with no connection the token simply stays valid until it is removed at myaccount.google.com.
+    public static func revoke(_ token: String) async {
+        _ = try? await URLSession.shared.data(for: revokeRequest(token))
+    }
+
+    static func revokeRequest(_ token: String) -> URLRequest {
+        formRequest("https://oauth2.googleapis.com/revoke", ["token": token])
+    }
+
+    #if os(macOS)
+    /// Runs Google's sign-in in a browser and returns the tokens. For a Desktop client, on a Mac.
+    ///
+    /// Google sends the browser back to a one-shot listener on this device, so no server is involved.
+    /// `open` must show the URL to the person (the default browser).
+    public static func signIn(client: OAuthClient, loginHint: String? = nil, scope: String = OAuth.scope,
+                              open: @escaping @Sendable (URL) -> Void) async throws -> TokenSet {
+        let verifier = randomString(64)
+        let state = randomString(24)
+        let listener = try LoopbackListener(state: state)
+        let port = try await listener.start()
+        let redirect = "http://127.0.0.1:\(port)"
+        open(authorizationURL(client: client, redirect: redirect, challenge: challenge(for: verifier), state: state,
+                              loginHint: loginHint, scope: scope))
 
         // Nobody waits forever: an abandoned browser tab ends the attempt after five minutes.
         let timeout = Task {
@@ -236,19 +355,9 @@ public enum OAuth {
         } onCancel: {
             listener.cancel()
         }
-        guard callback["state"] == state else { throw AuthError.failed("The sign-in reply did not match the request.") }
-        guard let code = callback["code"] else {
-            throw AuthError.failed(callback["error"] == "access_denied" ? "Sign-in was cancelled." : "Google did not return a sign-in code.")
-        }
-        var form = ["grant_type": "authorization_code", "code": code, "client_id": client.clientId,
-                    "redirect_uri": redirect, "code_verifier": verifier]
-        if let secret = client.clientSecret { form["client_secret"] = secret }
-        let response = try await postToken(form)
-        guard let access = response.access_token, let refresh = response.refresh_token else {
-            throw AuthError.failed(response.error_description ?? response.error ?? "Google did not return tokens.")
-        }
-        return TokenSet(refreshToken: refresh, accessToken: access, expiry: Date().addingTimeInterval(response.expires_in ?? 3000))
+        return try await exchange(codeForm(client: client, code: try code(from: callback, state: state), redirect: redirect, verifier: verifier))
     }
+    #endif
 
     private static func randomString(_ length: Int) -> String {
         let alphabet = Array("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
@@ -257,6 +366,7 @@ public enum OAuth {
     }
 }
 
+#if os(macOS)
 /// Accepts the single browser redirect that ends a sign-in.
 private final class LoopbackListener: @unchecked Sendable {
     private let listener: NWListener
@@ -350,3 +460,4 @@ private final class LoopbackListener: @unchecked Sendable {
         finish(.failure(error))
     }
 }
+#endif

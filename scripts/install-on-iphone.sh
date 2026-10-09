@@ -7,7 +7,8 @@ set -euo pipefail
 cd "$(dirname "$0")/../App"
 
 # A git worktree has none of the ignored key files, and an app built without them cannot sign in to Google.
-# Borrow the main checkout's.
+# Borrow the main checkout's. The iPhone signs in with an iOS client (see the README for the file's shape); with only
+# a Desktop client in the file, accounts already signed in keep working but no new one can be added.
 MAIN="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/App/Resources"
 for key in OAuthClient.json PushRelay.json; do
   [[ -e "Resources/$key" || ! -e "$MAIN/$key" ]] || cp "$MAIN/$key" Resources/

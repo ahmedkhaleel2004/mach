@@ -23,6 +23,7 @@ enum Bootstrap {
 
     /// The key ships inside the app when `App/Resources/OAuthClient.json` exists at build time.
     /// A copy in the app's data folder wins, so a downloaded build can be pointed at your own Google project.
+    /// The Mac wants a Desktop key and the iPhone an iOS one; `OAuthClient.load` lists the shapes the file may have.
     static func client() -> OAuthClient? {
         let candidates = [directory.appendingPathComponent("OAuthClient.json"), Bundle.main.url(forResource: "OAuthClient", withExtension: "json")]
         for case let url? in candidates {
@@ -53,7 +54,12 @@ enum Bootstrap {
         let custom = ProcessInfo.processInfo.environment["MACH_DATA_DIR"]?.isEmpty == false
         let tokens: TokenStore = custom ? FileTokenStore(directory: directory) : KeychainTokenStore()
         let service = try? MailService(directory: directory, client: found ?? OAuthClient(clientId: "", clientSecret: nil), tokens: tokens, offline: offline)
+        #if os(iOS)
+        // An iPhone signs in with an iOS key only. A Desktop key still keeps sign-ins made with it alive.
+        return service.map { ($0, found?.worksOnPhone == true) }
+        #else
         return service.map { ($0, found != nil) }
+        #endif
     }
 
     private struct Seed: Decodable {

@@ -69,6 +69,7 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
     let model: AppModel?
     var hasClient = false
     @ObservationIgnored private var session: ASWebAuthenticationSession?
+    @ObservationIgnored private var answer: SignInAnswer?
     @ObservationIgnored private var notifier: Notifier?
 
     override init() {
@@ -92,11 +93,11 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
         guard let model else { return }
         model.openURL = { UIApplication.shared.open($0) }
         model.dropFocus = { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
-        model.openSignIn = { [weak self] url in self?.startSignIn(url) }
-        model.signInFinished = { [weak self] in
-            self?.session?.cancel()
-            self?.session = nil
+        model.presentSignIn = { [weak self] url, scheme in
+            guard let self else { throw CancellationError() }
+            return try await self.presentSignIn(url, scheme: scheme)
         }
+        model.signInFinished = { [weak self] in self?.closeSignIn() }
         Task { await Bootstrap.importSeed(into: model.service) }
         let notifier = Notifier(open: { [weak model] account, thread in
             model?.open(account: account, threadId: thread)
@@ -112,7 +113,9 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
             PhoneDelegate.live?.start()
         }
         model.accountRemoved = { PhoneDelegate.live?.unregister($0) }
+        #if !STORE
         if !Bootstrap.offline { UIApplication.shared.registerForRemoteNotifications() }
+        #endif
         // The number on the icon is the unread conversations in every inbox. Whenever the app runs (open, or woken
         // by a push) it sets the number itself from what it holds; in between, the relay's pushes carry it.
         if !Bootstrap.offline {
@@ -231,21 +234,46 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
     nonisolated(unsafe) static var testKey: ((String) -> Void)?
     #endif
 
-    /// Google's page opens in the system sign-in sheet. The answer comes back to a listener inside this app,
-    /// so the sheet is closed by us once that listener hears from Google.
-    private func startSignIn(_ url: URL) {
-        // The sheet only ends by itself when the person closes it, which means they gave up.
-        let session = ASWebAuthenticationSession(url: url, callbackURLScheme: "mach") { [weak self] _, _ in
-            Task { @MainActor in
-                guard let self, self.session != nil else { return }
-                self.session = nil
-                self.model?.cancelSignIn()
+    /// Google's page opens in the system sign-in sheet. Google answers on an address that only this app's key
+    /// leads to, the sheet closes by itself and hands that address back. Nothing listens on the network.
+    private func presentSignIn(_ url: URL, scheme: String) async throws -> URL {
+        // Starting over closes the sheet of the attempt before.
+        closeSignIn()
+        let answer = SignInAnswer()
+        self.answer = answer
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                answer.continuation = continuation
+                let session = ASWebAuthenticationSession(url: url, callback: .customScheme(scheme)) { [weak self] callback, _ in
+                    Task { @MainActor in
+                        guard let self, self.answer === answer else { return }
+                        self.session = nil
+                        self.answer = nil
+                        if let callback {
+                            answer.give(.success(callback))
+                        } else {
+                            // The sheet only ends with nothing when the person closes it, which means they gave up.
+                            answer.give(.failure(CancellationError()))
+                            self.model?.cancelSignIn()
+                        }
+                    }
+                }
+                session.presentationContextProvider = self
+                session.prefersEphemeralWebBrowserSession = false
+                self.session = session
+                if !session.start() { answer.give(.failure(AuthError.failed("Could not open Google sign-in."))) }
             }
+        } onCancel: {
+            Task { @MainActor in answer.give(.failure(CancellationError())) }
         }
-        session.presentationContextProvider = self
-        session.prefersEphemeralWebBrowserSession = false
-        self.session = session
-        session.start()
+    }
+
+    private func closeSignIn() {
+        let open = session
+        session = nil
+        answer?.give(.failure(CancellationError()))
+        answer = nil
+        open?.cancel()
     }
 
     nonisolated func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
@@ -608,6 +636,18 @@ struct PhoneToast: View {
                 ToastView(toast: toast, undoHint: "Undo").padding(.bottom, model.openThread != nil && !model.inlineReply ? Theme.pt(92) + 30 : 70)
             }
         }
+    }
+}
+
+/// What a sign-in sheet came back with. It is waited for once and answered once, whichever of the sheet, the
+/// person and a second attempt gets there first.
+@MainActor
+private final class SignInAnswer {
+    var continuation: CheckedContinuation<URL, Error>?
+
+    func give(_ result: Result<URL, Error>) {
+        continuation?.resume(with: result)
+        continuation = nil
     }
 }
 

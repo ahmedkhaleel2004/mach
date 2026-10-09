@@ -71,15 +71,29 @@ after a paid security review, which Mach has not been through yet.
 There is no App Store or TestFlight build yet, so today the iPhone app is built from source with Xcode (free Apple
 account: the app lasts a week per install; paid: a year).
 
+The iPhone signs in with a Google OAuth client of type **iOS** (in the same Google Cloud project, with the app's
+bundle id), not the Desktop one: it has no secret, and Google answers on an address only the app opens. Save its id as
+`App/Resources/OAuthClient.json`:
+
+```json
+{ "client_id": "1234-abcd.apps.googleusercontent.com" }
+```
+
+To build the Mac and the iPhone app from one checkout, keep the Desktop client's JSON and add the iOS client beside
+`"installed"`: `"ios": { "client_id": "…" }`. Each app takes its own. The file is git-ignored; never commit it.
+
 ```sh
 brew install xcodegen
 git clone https://github.com/ahmedkhaleel2004/mach && cd mach
-cp /path/to/your/client.json App/Resources/OAuthClient.json
+cp /path/to/your/ios-client.json App/Resources/OAuthClient.json
 cd App && xcodegen generate && open Mach.xcodeproj   # set your team, run MachPhone on your iPhone
 ```
 
 Instant notifications on a closed iPhone need the small relay in [`Relay/`](Relay/README.md), on your own free
 Cloudflare account. Without it the phone checks when opened and in background refresh.
+
+The build for the App Store is the `Store` configuration (`scripts/upload-testflight.sh`). It has no relay in it at
+all, so nothing about your account goes anywhere but Google, and it refuses to build without an iOS client.
 
 ## Shortcuts
 
