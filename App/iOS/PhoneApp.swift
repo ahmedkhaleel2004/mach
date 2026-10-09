@@ -137,7 +137,7 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
         // real mail listens to nothing.
         guard Bootstrap.offline else { return }
         let keys = ["j", "k", "e", "s", "u", "c", "r", "a", "f", "h", "z", "x", "o", "enter", "escape", "tab", "palette", "search", "send", "type",
-                    "demoLeft", "demoRight", "style1", "style2", "style3", "lists", "face", "bigface", "discard", "drafts", "discardCompose"]
+                    "demoLeft", "demoRight", "style1", "style2", "style3", "lists", "face", "details", "bigface", "discard", "drafts", "discardCompose"]
         for key in keys {
             let name = "com.ahmedkhaleel.mach.key.\(key)" as CFString
             CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), nil, { _, _, name, _, _ in
@@ -172,6 +172,7 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
             case "discard": model.web.webView.evaluateJavaScript("document.querySelector('.draftbar button:nth-child(3)').click()", completionHandler: nil)
             case "drafts": model.go(.drafts)
             case "discardCompose": model.closeCompose(discard: true)
+            case "details": model.web.webView.evaluateJavaScript("document.querySelector('.msg.open .to').click()", completionHandler: nil)
             case "face": model.web.webView.evaluateJavaScript("document.querySelector('.face').click()", completionHandler: nil)
             case "style1", "style2", "style3": UserDefaults.standard.set(Int(String(key.last!)) ?? 1, forKey: "swipeStyle")
             case "demoLeft", "demoRight":
@@ -628,32 +629,32 @@ struct PhoneRoot: View {
                 Button(action: { model.overlay = .more }) {
                     Image(systemName: "ellipsis").font(.system(size: Theme.pt(18))).foregroundStyle(Theme.text).frame(width: 44, height: 44)
                 }
-                // The one thing you do to most mail, so it is the one thing that cannot be missed.
-                Button(action: { model.markDone() }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "checkmark").font(.system(size: Theme.pt(15), weight: .bold))
-                        Text("Archive").font(.system(size: Theme.pt(16), weight: .semibold))
-                    }
-                    .foregroundStyle(Theme.background)
-                    .padding(.horizontal, 16)
-                    .frame(height: Theme.pt(38))
-                    .background(Theme.accent, in: Capsule())
-                }
-                .padding(.leading, 4)
-                .padding(.trailing, 8)
             }
-            .padding(.leading, 4)
+            .padding(.horizontal, 4)
             .frame(height: Theme.pt(50))
             ThreadWebView(web: model.web)
                 .ignoresSafeArea(edges: .bottom)
                 .overlay(alignment: .bottom) {
                     HStack(spacing: 10) {
-                        replyButton("Reply", icon: "arrowshape.turn.up.left") { model.startReply(all: false) }
-                        replyButton("Reply All", icon: "arrowshape.turn.up.left.2") { model.startReply(all: true) }
-                        replyButton("Forward", icon: "arrowshape.turn.up.right") { model.startForward() }
+                        HStack(spacing: 8) {
+                            replyButton("Reply", icon: "arrowshape.turn.up.left") { model.startReply(all: false) }
+                            replyButton("Reply All", icon: "arrowshape.turn.up.left.2") { model.startReply(all: true) }
+                            replyButton("Forward", icon: "arrowshape.turn.up.right") { model.startForward() }
+                        }
+                        // The one thing you do to most mail, so it sits under the thumb: where Compose is on the list.
+                        Button(action: { model.markDone() }) {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: Theme.pt(20), weight: .bold))
+                                .foregroundStyle(Theme.background)
+                                .frame(width: 54, height: 54)
+                                .background(Theme.accent, in: Circle())
+                                .shadow(color: .black.opacity(0.25), radius: 8, y: 3)
+                        }
+                        .accessibilityLabel("Archive")
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 6)
+                    .padding(.leading, 14)
+                    .padding(.trailing, 18)
+                    .padding(.bottom, 18)
                 }
         }
         .background(Theme.background)
@@ -663,7 +664,7 @@ struct PhoneRoot: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Image(systemName: icon).font(.system(size: Theme.pt(13)))
-                Text(title).font(.system(size: Theme.pt(14), weight: .medium))
+                Text(title).font(.system(size: Theme.pt(14), weight: .medium)).lineLimit(1).minimumScaleFactor(0.8)
             }
             .foregroundStyle(Theme.text)
             .frame(maxWidth: .infinity)
