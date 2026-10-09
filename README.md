@@ -23,22 +23,20 @@ animation: things are simply there.
 
 ## Fast, measured
 
-Every number below is a median from the benchmarks in [`bench/`](bench/RESULTS.md), on a made-up mailbox of 50,000
-messages. "Before" is Mach's own first version, not another app.
+Medians on a mailbox of 50,000 messages. Every number has a benchmark behind it in [`bench/`](bench/RESULTS.md).
 
-| | Before | Now |
-|---|---|---|
-| Open a 200-message conversation | 231 ms | **48 ms** |
-| Open a heavy newsletter | 41 ms | **17 ms** |
-| Search 50,000 messages for a word | 14 ms | **2 ms** |
-| Main thread held per letter typed in search | 76 ms | **0.7 ms** |
-| Move down the list, per key | 8 ms | **2.3 ms** |
-| Archive 50 conversations | 50 ms | **14 ms** |
-| Read the inbox from disk (600 rows) | 2.3 ms | **0.5 ms** |
-| First 35 conversations on a brand-new sign-in | 3.9 s | **0.5 s** |
-| App size, Mac / iPhone | 8.8 / 9.2 MB | **4.6 / 4.5 MB** |
-
-With the relay running, new mail is on screen about a quarter of a second after Gmail announces it.
+| | |
+|---|---|
+| Search 50,000 messages | **2 ms** |
+| Typing in search, time the app is busy per letter | **0.7 ms** |
+| Open a heavy newsletter | **17 ms** |
+| Open a 200-message conversation | **48 ms** |
+| Move down the list, per key | **2.3 ms** |
+| Archive 50 conversations at once | **14 ms** |
+| Read the inbox from disk | **0.5 ms** |
+| First mail on screen after a brand-new sign-in | **0.5 s** |
+| New mail on screen after Gmail announces it (with the relay) | **0.25 s** |
+| The whole app | **4.6 MB** on Mac, **4.5 MB** on iPhone |
 
 ## What it feels like
 
