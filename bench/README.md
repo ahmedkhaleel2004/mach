@@ -35,6 +35,13 @@ Everything here measures Mach without touching real mail or Gmail.
 Web content does not paint in a hidden window; time it from inside the page, or bring the window forward for at
 most a second with the `front` command and send it `back` again.
 
+## Keyboard focus
+
+`bench/mac-ui/focus.sh` presses real keys (command bar, reply, search, new message) in a benchmark copy and checks
+after each that the keyboard is where it should be. It is the one script here that comes to the front, for about
+ten seconds: focus only goes wrong in the key window with real key events. Run it after touching anything that
+opens a text field.
+
 ## Results
 
 `bench/RESULTS.md` is the table: metric, how it is measured, baseline, final, change, for Mac and iPhone, on both mailboxes.

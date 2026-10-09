@@ -152,7 +152,10 @@ struct ComposeView: View {
         .onAppear {
             guard let current = model.compose else { return }
             showCopies = !current.cc.isEmpty || !current.bcc.isEmpty
-            focus = current.to.isEmpty ? .to : (current.subject.isEmpty ? .subject : .body)
+            let want: Field = current.to.isEmpty ? .to : (current.subject.isEmpty ? .subject : .body)
+            // A turn later: asked for while this view is still being put on screen, the Mac hands the keyboard to
+            // the conversation behind it, or to nothing, and every key typed is lost.
+            DispatchQueue.main.async { focus = want }
         }
         .fileImporter(isPresented: $pickingFile, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             guard case .success(let urls) = result else { return }

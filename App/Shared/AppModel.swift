@@ -385,6 +385,8 @@ final class AppModel {
     /// nil when every inbox is shown.
     private var scope: String? { isAll ? nil : accountId }
     var account: Account? { accounts.first { $0.id == accountId } }
+    /// True until the first download of every account on screen has finished. All Inboxes has no single account to ask.
+    var firstDownload: Bool { accounts.contains { (isAll || $0.id == accountId) && $0.historyId == nil } }
     var accountTitle: String { isAll ? (accounts.count > 1 ? "All Inboxes" : accounts.first?.id ?? "") : accountId }
 
     /// The account new mail is written from: the one on screen, else the one last written from.

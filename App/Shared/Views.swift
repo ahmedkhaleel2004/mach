@@ -1,5 +1,8 @@
 import MachCore
 import SwiftUI
+#if os(macOS)
+import ServiceManagement
+#endif
 
 // MARK: - Rows
 
@@ -204,7 +207,7 @@ struct EmptyListView: View {
         VStack(spacing: 6) {
             if model.searchActive {
                 Text(model.searchText.isEmpty ? "Type to search all mail" : "No matches").foregroundStyle(Theme.faint)
-            } else if model.account?.historyId == nil {
+            } else if model.firstDownload {
                 Text("Downloading your mail…").foregroundStyle(Theme.faint)
             } else if model.list.isInbox {
                 Text("Inbox Zero").font(.system(size: Theme.pt(22), weight: .semibold)).foregroundStyle(Theme.text)
@@ -620,7 +623,8 @@ struct PaletteView: View {
                 }
             }
         }
-        .onAppear { focused = true }
+        // A turn later, for the same reason as the compose view: asked for at once, the keyboard goes nowhere.
+        .onAppear { DispatchQueue.main.async { focused = true } }
         .onChange(of: model.paletteQuery) { _, _ in model.paletteIndex = 0 }
     }
 }
@@ -686,6 +690,9 @@ struct AccountsView: View {
     @AppStorage(Theme.scaleKey) private var scale = Theme.defaultScale
     @AppStorage(SwipeAction.leftKey) private var swipeLeft = SwipeAction.defaultLeft
     @AppStorage(SwipeAction.rightKey) private var swipeRight = SwipeAction.defaultRight
+    #if os(macOS)
+    @State private var atLogin = SMAppService.mainApp.status == .enabled
+    #endif
 
     private func swipeRow(_ title: String, value: Binding<SwipeAction>) -> some View {
         HStack {
@@ -788,6 +795,26 @@ struct AccountsView: View {
                         Text("Makes the list rows and the open email bigger or smaller.").font(.system(size: Theme.pt(12))).foregroundStyle(Theme.faint)
                     }
                     .padding(14)
+                    #if os(macOS)
+                    Rectangle().fill(Theme.line).frame(height: 1)
+                    HStack {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Open at login").font(.system(size: Theme.pt(14))).foregroundStyle(Theme.text)
+                            Text("Mach starts with your Mac, so new mail is announced without you opening it.")
+                                .font(.system(size: Theme.pt(12))).foregroundStyle(Theme.faint)
+                        }
+                        Spacer()
+                        Text(atLogin ? "On" : "Off").font(.system(size: Theme.pt(13), weight: .semibold)).foregroundStyle(atLogin ? Theme.accent : Theme.faint)
+                    }
+                    .padding(14)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        if atLogin { try? SMAppService.mainApp.unregister() } else { try? SMAppService.mainApp.register() }
+                        // Chosen here, so the app never switches it back on by itself.
+                        UserDefaults.standard.set(true, forKey: "loginItemSet")
+                        atLogin = SMAppService.mainApp.status == .enabled
+                    }
+                    #endif
                 }
                 if model.compact {
                     Rectangle().fill(Theme.line).frame(height: 1)

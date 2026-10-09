@@ -119,10 +119,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.service.onNewMail = { notifier.announce($0) }
         self.notifier = notifier
         // Mail can only be announced while the app is running, so it starts with the Mac (once; it can be
-        // switched off in System Settings > General > Login Items and stays off).
-        if !UserDefaults.standard.bool(forKey: "askedLoginItem"), Bundle.main.bundlePath.hasPrefix("/Applications/") {
-            UserDefaults.standard.set(true, forKey: "askedLoginItem")
+        // switched off in the app's settings or in System Settings > General > Login Items and stays off).
+        // Counted as done only once it has taken, so a first try that failed is made again on the next launch.
+        if !UserDefaults.standard.bool(forKey: "loginItemSet"), Bundle.main.bundlePath.hasPrefix("/Applications/") {
             try? SMAppService.mainApp.register()
+            if SMAppService.mainApp.status == .enabled { UserDefaults.standard.set(true, forKey: "loginItemSet") }
         }
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, let model = self.model else { return event }
@@ -178,6 +179,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 } else if command == "front" {
                     // Shows the window without activating the app, so the keyboard stays where it was.
                     NSApp.windows.first { $0.frame.width > 700 }?.orderFrontRegardless()
+                } else if command == "responder" {
+                    // Which control would get the next key press: how a test checks that a field is ready to type in.
+                    let window = NSApp.windows.first { $0.frame.width > 700 }
+                    let name = window?.firstResponder.map { String(describing: type(of: $0)) } ?? "none"
+                    FileHandle.standardError.write(Data("responder: \(name) key: \(window?.isKeyWindow == true ? 1 : 0)\n".utf8))
+                } else if command == "focusweb" {
+                    // As if the conversation had been clicked: it holds the keyboard until something else asks for it.
+                    NSApp.windows.first { $0.frame.width > 700 }?.makeFirstResponder(model.web.webView)
                 } else if command == "back" {
                     NSApp.windows.first { $0.frame.width > 700 }?.orderBack(nil)
                 } else if command.hasPrefix("js:") {
@@ -450,7 +459,7 @@ struct MainView: View {
         .padding(.trailing, 20)
         .padding(.top, 28)
         .frame(height: 76)
-        .onChange(of: model.searchFocusRequest) { _, _ in searchFocused = true }
+        .onChange(of: model.searchFocusRequest) { _, _ in DispatchQueue.main.async { searchFocused = true } }
     }
 
     private var threadBar: some View {
