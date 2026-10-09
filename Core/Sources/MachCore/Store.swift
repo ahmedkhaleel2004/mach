@@ -757,7 +757,9 @@ public final class Store: @unchecked Sendable {
 
     /// A stream that yields the list again every time something in it changes.
     public func observeThreads(account: String?, label: String, limit: Int) -> AsyncStream<[MailThread]> {
-        stream(ValueObservation.tracking { db in
+        // The tables are named here, not left to be worked out from the first read: All Inboxes opened while
+        // empty reads so little that it never heard of the mail that arrived next (EmptyListTests).
+        stream(ValueObservation.tracking(region: Table("thread_label"), Table("thread"), Table("account")) { db in
             try Self.fetchThreads(db, account: account, label: label, limit: limit)
         })
     }
