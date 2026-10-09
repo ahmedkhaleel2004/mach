@@ -202,6 +202,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     model.compose?.subject = String(command.dropFirst(8))
                 } else if command.hasPrefix("attach:") {
                     model.compose?.attachmentPaths.append(String(command.dropFirst(7)))
+                } else if command == "replydetails" {
+                    model.replyDetailsRequest += 1
+                } else if command == "discardcompose" {
+                    model.closeCompose(discard: true)
                 } else if command == "send" {
                     model.sendCompose()
                 } else if command.hasPrefix("snooze:") {
@@ -248,7 +252,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return true
             }
         }
-        guard model.openThread != nil || swipeIsSideways == true, model.compose == nil, model.overlay == nil,
+        guard model.openThread != nil || swipeIsSideways == true, model.compose == nil || model.inlineReply, model.overlay == nil,
               event.hasPreciseScrollingDeltas else { return false }
         let width = event.window?.frame.width ?? 1200
         if event.phase == .began {
@@ -387,6 +391,7 @@ struct MainView: View {
                         // The web view is made just after the first frame (see `AppModel.web`); until then its place is empty.
                         if model.webWarm {
                             ThreadWebView(web: model.web)
+                                .overlay { InlineReplyLayer(model: model) }
                         } else {
                             Color.clear
                         }
