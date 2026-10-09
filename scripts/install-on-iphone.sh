@@ -6,6 +6,13 @@
 set -euo pipefail
 cd "$(dirname "$0")/../App"
 
+# A git worktree has none of the ignored key files, and an app built without them cannot sign in to Google.
+# Borrow the main checkout's.
+MAIN="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/App/Resources"
+for key in OAuthClient.json PushRelay.json; do
+  [[ -e "Resources/$key" || ! -e "$MAIN/$key" ]] || cp "$MAIN/$key" Resources/
+done
+
 command -v xcodegen >/dev/null || brew install xcodegen
 xcodegen generate --quiet
 

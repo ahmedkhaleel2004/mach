@@ -38,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var scrollMonitor: Any?
     private var swipeDistance: CGFloat = 0
     private var swipeIsSideways: Bool?
+    private var swipeGlides = false
     private var notifier: Notifier?
     private var appearanceWatch: NSKeyValueObservation?
     private var live: LiveLink?
@@ -228,7 +229,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Returns true when the event was a sideways swipe that this consumed.
     private func handleScroll(_ event: NSEvent, model: AppModel) -> Bool {
-        guard model.openThread != nil || swipeIsSideways == true || event.momentumPhase != [], model.compose == nil, model.overlay == nil,
+        // The glide after the fingers lift belongs to the back swipe that was just handled, all of it: by then the
+        // list is under the pointer, and any part of the glide let through would scroll it.
+        if swipeGlides {
+            if event.momentumPhase == [] {
+                swipeGlides = false
+            } else {
+                if event.momentumPhase == .ended || event.momentumPhase == .cancelled { swipeGlides = false }
+                return true
+            }
+        }
+        guard model.openThread != nil || swipeIsSideways == true, model.compose == nil, model.overlay == nil,
               event.hasPreciseScrollingDeltas else { return false }
         let width = event.window?.frame.width ?? 1200
         if event.phase == .began {
@@ -250,12 +261,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if event.phase == .ended || event.phase == .cancelled {
             guard swipeIsSideways == true else { return false }
             swipeIsSideways = nil
+            swipeGlides = true
             model.dragBack(event.phase == .cancelled ? 0 : swipeDistance, endVelocity: 0, width: width)
             return true
         }
-        // The glide after the fingers lift belongs to the swipe that was just handled.
-        if event.momentumPhase != [], swipeDistance != 0, abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY) { return true }
-        if event.momentumPhase == .ended { swipeDistance = 0 }
         return false
     }
 
