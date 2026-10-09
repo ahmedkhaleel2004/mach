@@ -663,11 +663,137 @@ struct PhoneRoot: View {
                 ThreadWebView(web: model.web)
                     .ignoresSafeArea(edges: .bottom)
                     .overlay(alignment: .bottom) { ThreadButtons(model: model) }
+                    // The room the Done button may be dragged around in.
+                    .overlay {
+                        Color.clear.allowsHitTesting(false)
+                            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(DoneSpot.space)) } action: { DoneSpot.shared.room = $0 }
+                    }
                 // Not over the web view itself, which runs on under the keyboard: this stops where the keyboard starts.
                 InlineReplyLayer(model: model)
             }
+            .coordinateSpace(.named(DoneSpot.space))
         }
         .background(Theme.background)
+    }
+}
+
+/// Where the Done button has been dragged to, and the room it has to stay inside.
+@MainActor @Observable
+final class DoneSpot {
+    static let shared = DoneSpot()
+    nonisolated static let space = "thread"
+    static let xKey = "doneX", yKey = "doneY"
+
+    /// The conversation's page above the home bar, in the `space` coordinates.
+    var room = CGRect.zero
+    /// Where the button sits when it has never been moved.
+    var home = CGRect.zero
+    /// How far from `home` it has been left.
+    var offset = CGSize(width: UserDefaults.standard.double(forKey: xKey), height: UserDefaults.standard.double(forKey: yKey))
+
+    /// The nearest place to `wanted` that keeps the whole button on the page.
+    func kept(_ wanted: CGSize) -> CGSize {
+        guard room.width > 0, home.width > 0 else { return wanted }
+        let edge: CGFloat = 8
+        let x = min(max(wanted.width, room.minX + edge - home.minX), max(0, room.maxX - edge - home.maxX))
+        let y = min(max(wanted.height, room.minY + edge - home.minY), max(0, room.maxY - 6 - home.maxY))
+        return CGSize(width: x, height: y)
+    }
+
+    func leave(at wanted: CGSize) {
+        var spot = kept(wanted)
+        // Let go close to where it started, it goes back there exactly.
+        if hypot(spot.width, spot.height) < 28 { spot = .zero }
+        offset = spot
+        UserDefaults.standard.set(spot.width, forKey: Self.xKey)
+        UserDefaults.standard.set(spot.height, forKey: Self.yKey)
+    }
+}
+
+/// The Done button. A tap archives; held for a moment it lifts off the page and follows the finger, and stays where
+/// it is let go. Not a `Button`, which would also count the end of a drag as a tap.
+private struct DoneButton: View {
+    let model: AppModel
+    private let spot = DoneSpot.shared
+    @GestureState private var touching = false
+    @State private var pressed = false
+    @State private var lifted = false
+    /// The finger wandered off before the button lifted: neither a tap nor a drag.
+    @State private var strayed = false
+    @State private var finger = CGSize.zero
+    @State private var liftedAt = CGSize.zero
+    @State private var hold: Task<Void, Never>?
+
+    private var place: CGSize {
+        guard lifted else { return spot.kept(spot.offset) }
+        return spot.kept(CGSize(width: spot.offset.width + finger.width - liftedAt.width, height: spot.offset.height + finger.height - liftedAt.height))
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checkmark").font(.system(size: Theme.pt(17), weight: .bold))
+            Text("Done").font(.system(size: Theme.pt(18), weight: .semibold))
+        }
+        .foregroundStyle(Theme.background)
+        .padding(.horizontal, 24)
+        .frame(height: Theme.pt(50))
+        .background(Theme.accent, in: Capsule())
+        .shadow(color: .black.opacity(lifted ? 0.35 : 0.25), radius: lifted ? 16 : 8, y: lifted ? 8 : 3)
+        .opacity(pressed && !lifted ? 0.6 : 1)
+        .scaleEffect(lifted ? 1.08 : 1)
+        .contentShape(Capsule())
+        .offset(place)
+        .gesture(
+            DragGesture(minimumDistance: 0, coordinateSpace: .named(DoneSpot.space))
+                .updating($touching) { _, state, _ in state = true }
+                .onChanged { value in
+                    finger = value.translation
+                    if !pressed, !strayed {
+                        pressed = true
+                        Haptics.prepare()
+                        hold = Task {
+                            try? await Task.sleep(for: .milliseconds(300))
+                            guard !Task.isCancelled, pressed, !strayed else { return }
+                            liftedAt = finger
+                            withAnimation(.spring(duration: 0.25, bounce: 0.3)) { lifted = true }
+                            Haptics.select()
+                        }
+                    } else if !lifted, hypot(finger.width, finger.height) > 10 {
+                        strayed = true
+                        pressed = false
+                        hold?.cancel()
+                    }
+                }
+                .onEnded { _ in
+                    let tapped = pressed && !lifted && !strayed
+                    settle()
+                    if tapped { model.markDone() }
+                }
+        )
+        // Read outside the offset, so it is where the button would sit unmoved, wherever it is now.
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(DoneSpot.space)) } action: { spot.home = $0 }
+        // A touch the system took away (no `onEnded`) still leaves the button where it was dragged to.
+        .onChange(of: touching) { if !touching { settle() } }
+        .accessibilityElement()
+        .accessibilityLabel("Done")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { model.markDone() }
+    }
+
+    private func settle() {
+        hold?.cancel()
+        hold = nil
+        if lifted {
+            let wanted = place
+            withAnimation(.spring(duration: 0.3, bounce: 0.2)) {
+                spot.leave(at: wanted)
+                lifted = false
+            }
+        }
+        pressed = false
+        strayed = false
+        finger = .zero
+        liftedAt = .zero
     }
 }
 
@@ -680,17 +806,8 @@ private struct ThreadButtons: View {
         if !model.inlineReply {
             VStack(alignment: .trailing, spacing: 10) {
                 // The one thing you do to most mail, so it is the biggest thing here and sits under the thumb.
-                Button(action: { model.markDone() }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "checkmark").font(.system(size: Theme.pt(17), weight: .bold))
-                        Text("Done").font(.system(size: Theme.pt(18), weight: .semibold))
-                    }
-                    .foregroundStyle(Theme.background)
-                    .padding(.horizontal, 24)
-                    .frame(height: Theme.pt(50))
-                    .background(Theme.accent, in: Capsule())
-                    .shadow(color: .black.opacity(0.25), radius: 8, y: 3)
-                }
+                // Above the reply buttons, wherever it has been dragged to.
+                DoneButton(model: model).zIndex(1)
                 HStack(spacing: 10) {
                     replyButton("Reply", icon: "arrowshape.turn.up.left") { model.startReply(all: false) }
                     replyButton("Reply All", icon: "arrowshape.turn.up.left.2") { model.startReply(all: true) }
