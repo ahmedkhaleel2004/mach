@@ -1,0 +1,554 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src * data: blob: blitz-cid: blitz-avatar: blitz-att:; media-src *; font-src * data:; style-src 'unsafe-inline' *; script-src 'nonce-__NONCE__'; form-action 'none'; base-uri 'none'">
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff; --text: #1b1b1f; --dim: #6e6e78; --faint: #9a9aa5; --line: #e7e7ec; --card: #f6f6f8;
+  --accent: #5b5bd6; --chip: #efeff3;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111114; --text: #ececf1; --dim: #9c9ca8; --faint: #6c6c78; --line: #26262c; --card: #1a1a1f; --accent: #9d9dff; --chip: #222228; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); }
+body { font: 14px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; -webkit-text-size-adjust: 100%; overflow-wrap: anywhere; }
+#root { max-width: 860px; margin: 0 auto; padding: 18px 28px 120px; }
+body.compact #root { padding: 10px 14px 140px; }
+h1 { font-size: 20px; line-height: 1.3; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.01em; }
+body.compact { font-size: 15px; }
+body.compact h1 { font-size: 19px; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; }
+.tag { font-size: 11px; color: var(--dim); background: var(--chip); border-radius: 4px; padding: 1px 6px; }
+.msg { border-top: 1px solid var(--line); padding: 12px 0; }
+.msg:first-of-type { border-top: none; }
+.head { display: flex; align-items: baseline; gap: 10px; cursor: default; -webkit-user-select: none; user-select: none; }
+.face { cursor: pointer; position: relative; flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%; overflow: hidden; align-self: flex-start; color: #fff; font-size: 15px; font-weight: 600; display: grid; place-items: center; }
+.msg.faced .head { align-items: center; min-height: 40px; }
+.msg.faced.open .head { align-items: flex-start; }
+.msg.faced.open .head .from, .msg.faced.open .head .date { margin-top: 1px; }
+.face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #fff; }
+.msg.faced .to, .msg.faced .details { margin-left: 50px; }
+.msg.faced.open .to { margin-top: -19px; }
+.msg.faced .body, .msg.faced .files, .msg.faced .draftbar { margin-left: 50px; }
+body.compact .msg.faced .body, body.compact .msg.faced .files, body.compact .msg.faced .draftbar { margin-left: 0; }
+.from { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; }
+.msg.unread .from::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-right: 7px; vertical-align: 1px; }
+.snip { color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1 1 0; min-width: 0; }
+.date { color: var(--faint); font-size: 12px; white-space: nowrap; margin-left: auto; flex: 0 0 auto; }
+.to { color: var(--dim); font-size: 12px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default; -webkit-user-select: none; user-select: none; }
+.to::after { content: " ▾"; color: var(--faint); }
+.msg.detailed .to::after { content: " ▴"; }
+.details { display: none; margin-top: 8px; padding: 10px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; font-size: 12.5px; grid-template-columns: max-content 1fr; gap: 4px 12px; }
+.msg.open.detailed .details { display: grid; }
+.details .k { color: var(--faint); text-align: right; }
+.details .v { color: var(--text); -webkit-user-select: text; user-select: text; overflow-wrap: anywhere; }
+.msg.open .snip { visibility: hidden; }
+.msg:not(.open) .to, .msg:not(.open) .details, .msg:not(.open) .files, .msg:not(.open) .draftbar { display: none; }
+/* A collapsed message is not removed from layout, only squeezed to nothing and hidden. The browser has then
+   already laid it out and sized it, so opening it is a change of height and not a first render. */
+.msg:not(.open) .body { height: 0; margin-top: 0; overflow: hidden; visibility: hidden; }
+.head { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.body { margin-top: 12px; }
+.files { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.file { width: 200px; max-width: calc(50% - 5px); background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; cursor: pointer; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+.file .shot { height: 124px; background: var(--chip); display: grid; place-items: center; overflow: hidden; }
+.file .shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.file .shot.plain img { display: none; }
+.file .kind { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: var(--faint); text-transform: uppercase; }
+.file .shot:not(.plain) .kind { display: none; }
+.file .label { padding: 7px 10px 8px; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file small { color: var(--faint); margin-left: 6px; }
+.file:active { opacity: 0.6; }
+.badge { font-size: 11px; font-weight: 600; color: var(--accent); margin-left: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
+.draftbar { display: flex; gap: 8px; margin-top: 14px; }
+button { font: inherit; font-size: 13px; border: none; border-radius: 6px; padding: 6px 14px; background: var(--chip); color: var(--text); }
+button.primary { background: var(--accent); color: var(--bg); font-weight: 600; }
+button:active { opacity: 0.6; }
+#empty { color: var(--faint); padding: 40px 0; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script nonce="__NONCE__">
+(function () {
+  "use strict";
+  var root = document.getElementById("root");
+  var current = null;
+  // What the page holds for the open conversation, by message id. When the same conversation is drawn again (it was
+  // marked read, a message arrived) only what changed is rebuilt: a body that is already here stays exactly as it
+  // is, parsed and laid out, its pictures loaded.
+  var bodies = {};  // { html, kind } as the app sent it
+  var boxes = {};   // { node, key, open }: the message's element, a fingerprint of all it shows, whether its mail said "open"
+
+  function post(message) {
+    try { window.webkit.messageHandlers.blitz.postMessage(message); } catch (e) {}
+  }
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+  function size(bytes) {
+    if (bytes > 1048576) return (bytes / 1048576).toFixed(1) + " MB";
+    if (bytes > 1024) return Math.round(bytes / 1024) + " KB";
+    return bytes + " B";
+  }
+
+  var baseCSS =
+    // "contain" keeps an email inside its own box: nothing in it can be pinned over the sender line or the app.
+    ":host{display:block;overflow-x:auto;overflow-y:hidden;contain:content;isolation:isolate}" +
+    ".w{font:14px/1.5 -apple-system,BlinkMacSystemFont,sans-serif;overflow-wrap:anywhere;transform-origin:0 0}" +
+    ".w.rich{background:#fff;color:#1b1b1f;color-scheme:light;border-radius:8px;padding:12px;border:1px solid var(--line)}" +
+    ".w.plain{white-space:pre-wrap;color:var(--text)}" +
+    // Ordinary mail takes the app's colours whatever its writer's program hard-coded (black text, white boxes),
+    // so it reads the same in light and dark mode.
+    ".w.simple{color:var(--text)}" +
+    ".w.simple *{color:inherit!important;background-color:transparent!important;border-color:var(--line)!important}" +
+    ".w.simple a,.w.simple a *,.w.plain a{color:var(--accent)!important}" +
+    ".w.simple .q-toggle,.w.plain .q-toggle{background-color:var(--chip)!important;color:var(--dim)!important}" +
+    "img{max-width:100%;height:auto}" +
+    "blockquote{margin:0 0 0 .8ex;border-left:2px solid var(--line);padding-left:1ex}" +
+    "pre{white-space:pre-wrap}" +
+    ".q-hidden{display:none!important}" +
+    ".q-toggle{display:inline-block;margin:8px 0 0;padding:0 8px;line-height:14px;height:16px;border-radius:8px;background:var(--chip);color:var(--dim);font:700 14px/12px -apple-system,sans-serif;letter-spacing:1px;cursor:default;-webkit-user-select:none;user-select:none}";
+
+  function escapeHTML(text) {
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function plainToHTML(text) {
+    var lines = text.replace(/\r\n/g, "\n").split("\n");
+    var cut = -1;
+    for (var i = 0; i < lines.length; i++) {
+      if (/^>/.test(lines[i]) || /^On .{6,200} wrote:\s*$/.test(lines[i]) || /^-{2,} ?(Original|Forwarded) [Mm]essage ?-{2,}/.test(lines[i])) {
+        var rest = lines.slice(i + 1).filter(function (l) { return l.trim() !== ""; });
+        var quoted = rest.filter(function (l) { return /^>/.test(l); }).length;
+        if (/^>/.test(lines[i]) ? quoted >= rest.length * 0.8 : true) { cut = i; break; }
+      }
+    }
+    function fmt(part) {
+      return escapeHTML(part).replace(/(https?:\/\/[^\s<>"']+[^\s<>"'.,;:!?)\]])/g, '<a href="$1">$1</a>');
+    }
+    if (cut > 0 && lines.slice(0, cut).join("").trim() !== "") {
+      return fmt(lines.slice(0, cut).join("\n").replace(/\s+$/, "")) +
+        '\n<span class="q-toggle">···</span><div class="q-hidden q-block">' + fmt(lines.slice(cut).join("\n")) + "</div>";
+    }
+    return fmt(text);
+  }
+
+  function collapseQuotes(wrapper) {
+    var quote = wrapper.querySelector('.gmail_quote, blockquote[type="cite"], .yahoo_quoted, #appendonsend, #divRplyFwdMsg, .moz-cite-prefix, .protonmail_quote');
+    if (!quote) return;
+    // Climb to the outermost quote container that is not the whole message.
+    var hidden = [];
+    var node = quote;
+    if (quote.id === "appendonsend" || quote.id === "divRplyFwdMsg" || quote.classList.contains("moz-cite-prefix")) {
+      while (node) { hidden.push(node); node = node.nextSibling; }
+      // Outlook puts a horizontal rule right before the header block.
+      var before = quote.previousElementSibling;
+      if (before && before.tagName === "HR") hidden.push(before);
+    } else {
+      hidden.push(quote);
+    }
+    var elements = hidden.filter(function (n) { return n.nodeType === 1; });
+    elements.forEach(function (n) { n.classList.add("q-hidden"); });
+    var remaining = (wrapper.innerText || "").trim();
+    if (remaining.length === 0 && !wrapper.querySelector("img:not(.q-hidden img)")) {
+      elements.forEach(function (n) { n.classList.remove("q-hidden"); });
+      return;
+    }
+    var toggle = el("span", "q-toggle", "···");
+    elements[0].parentNode.insertBefore(toggle, elements[0]);
+    elements.forEach(function (n) { n.classList.add("q-block"); });
+  }
+
+  // A designed message is always shown on a light card, so its own dark-mode rules must never apply: many set white
+  // text and count on the mail program's dark page behind it, which here would be white on white.
+  function lightOnly(html) {
+    if (html.indexOf("prefers-color-scheme") < 0) return html;
+    // Walked with plain searches, one pass: a pattern that hunts for each sheet's end would take forever on mail
+    // made of thousands of sheets that never end.
+    var lower = html.toLowerCase(), out = "", position = 0;
+    while (true) {
+      var start = lower.indexOf("<style", position);
+      if (start < 0) break;
+      var end = lower.indexOf("</style", start);
+      if (end < 0) end = html.length;
+      out += html.slice(position, start) + html.slice(start, end)
+        .replace(/\(\s*prefers-color-scheme\s*:\s*dark\s*\)/gi, "(max-width:0)")
+        .replace(/\(\s*prefers-color-scheme\s*:\s*light\s*\)/gi, "(min-width:0)");
+      position = end;
+    }
+    return out + html.slice(position);
+  }
+
+  function fillBody(host, message) {
+    if (host.shadowRoot) return;
+    var content = bodies[message.id] || { html: "", kind: "plain" };
+    var shadow = host.attachShadow({ mode: "open" });
+    var style = document.createElement("style");
+    style.textContent = baseCSS;
+    shadow.appendChild(style);
+    var wrapper = el("div", "w " + content.kind);
+    if (content.kind === "plain") {
+      wrapper.innerHTML = plainToHTML(content.html);
+    } else {
+      wrapper.innerHTML = content.kind === "rich" ? lightOnly(content.html) : content.html;
+      wrapper.querySelectorAll("img").forEach(function (img) { img.decoding = "async"; });
+      collapseQuotes(wrapper);
+    }
+    shadow.appendChild(wrapper);
+    wrapper.addEventListener("click", function (event) {
+      var target = event.target;
+      if (target.classList && target.classList.contains("q-toggle")) {
+        wrapper.querySelectorAll(".q-block").forEach(function (n) { n.classList.toggle("q-hidden"); });
+        event.preventDefault();
+        fit(host);
+        return;
+      }
+      var link = target.closest ? target.closest("a[href]") : null;
+      if (link) {
+        event.preventDefault();
+        post({ type: "link", url: link.href });
+      }
+    });
+    // A message built before it is on the page has no width yet: `render` fits it once it is there.
+    if (host.isConnected && !fitLater) fit(host); else unfitted.push(host);
+    wrapper.querySelectorAll("img").forEach(function (img) {
+      if (!img.complete) img.addEventListener("load", function () { fitSoon(host); }, { once: true });
+    });
+  }
+
+  // Shrinks a message that is wider than the screen (newsletters built for desktop) so it never scrolls sideways.
+  function fit(host) { fitAll([host]); }
+
+  // The same for several messages with the page laid out as few times as possible: every message is put back to its
+  // own size first, then all are measured, then all are shrunk.
+  function fitAll(hosts) {
+    var items = [];
+    hosts.forEach(function (host) {
+      var wrapper = host.isConnected && host.shadowRoot && host.shadowRoot.querySelector(".w");
+      if (wrapper) items.push({ host: host, wrapper: wrapper });
+    });
+    items.forEach(function (item) { if (item.wrapper.style.zoom) item.wrapper.style.zoom = ""; });
+    items.forEach(function (item) {
+      item.available = item.host.clientWidth;
+      item.needed = item.available ? item.wrapper.scrollWidth : 0;
+    });
+    items.forEach(function (item) {
+      if (item.needed > item.available + 2) item.wrapper.style.zoom = String(Math.max(0.3, item.available / item.needed));
+    });
+  }
+
+  // Messages built while off the page, or while `fitLater` says several are being built in one go, waiting to be fitted.
+  var unfitted = [];
+  var fitLater = false;
+  // Pictures that arrive together (a newsletter's, all at once) fit their message once, not once each.
+  var fitQueue = [];
+  function fitSoon(host) {
+    if (fitQueue.indexOf(host) < 0) fitQueue.push(host);
+    if (fitQueue.length > 1) return;
+    setTimeout(function () {
+      var hosts = fitQueue;
+      fitQueue = [];
+      fitAll(hosts);
+    }, 0);
+  }
+
+  // Builds a message's box. `old` is its box from the last time this conversation was drawn, when its body has not
+  // changed: the body is then left in place and everything around it is built again.
+  function renderMessage(message, old) {
+    var box = old ? old.node : el("div");
+    var body = old ? box.querySelector(":scope > .body") : box.appendChild(el("div", "body"));
+    // Open or closed stays the way the reader left it, unless the mail itself changed that (it was just read, say).
+    var open = old && old.open === message.open ? box.classList.contains("open") : message.open;
+    var detailed = old && box.classList.contains("detailed");
+    if (old && old.open && !message.open) {
+      // Closed by the mail, not by the reader: back to an empty body, as if it had never been opened.
+      var empty = el("div", "body");
+      body.replaceWith(empty);
+      body = empty;
+    }
+    // The sender's picture is kept too when it is the same one, so it does not blink.
+    var face = old ? box.querySelector(":scope > .head > .face") : null;
+    var faceOf = message.avatar + " " + message.initials + " " + message.color;
+    if (face && face.dataset.of !== faceOf) face = null;
+    while (box.firstChild !== body) box.firstChild.remove();
+    while (body.nextSibling) body.nextSibling.remove();
+    box.className = "msg" + (open ? " open" : "") + (message.unread ? " unread" : "") + (detailed ? " detailed" : "");
+    box.dataset.id = message.id;
+    var head = el("div", "head");
+    if (message.avatar) {
+      box.classList.add("faced");
+      if (!face) {
+        face = el("span", "face", message.initials);
+        face.dataset.of = faceOf;
+        face.style.background = message.color;
+        var picture = document.createElement("img");
+        picture.addEventListener("error", function () { picture.remove(); });
+        picture.src = message.avatar;
+        face.appendChild(picture);
+        // Touching the picture shows it up close instead of opening or closing the message.
+        face.addEventListener("click", function (event) {
+          event.stopPropagation();
+          post({ type: "face", message: message.id });
+        });
+      }
+      head.appendChild(face);
+    }
+    var from = el("span", "from", message.from);
+    if (message.draft) from.appendChild(el("span", "badge", "Draft"));
+    if (message.sending) from.appendChild(el("span", "badge", "Sending"));
+    head.appendChild(from);
+    head.appendChild(el("span", "snip", message.snippet));
+    head.appendChild(el("span", "date", message.date));
+    box.insertBefore(head, body);
+    var to = el("div", "to", message.to || "details");
+    box.insertBefore(to, body);
+    var details = el("div", "details");
+    (message.details || []).forEach(function (pair) {
+      details.appendChild(el("div", "k", pair[0] + ":"));
+      details.appendChild(el("div", "v", pair[1]));
+    });
+    box.insertBefore(details, body);
+    to.addEventListener("click", function () { box.classList.toggle("detailed"); });
+    if (message.files && message.files.length) {
+      var files = el("div", "files");
+      message.files.forEach(function (file, index) {
+        // A tile with a picture of what is inside: the image, a PDF's first page, or the kind of file.
+        var tile = el("div", "file");
+        var shot = el("div", "shot plain");
+        var extension = file.name.indexOf(".") > 0 ? file.name.split(".").pop() : "file";
+        shot.appendChild(el("span", "kind", extension.slice(0, 5)));
+        var picture = document.createElement("img");
+        picture.decoding = "async";
+        picture.addEventListener("load", function () { shot.classList.remove("plain"); });
+        picture.dataset.src = file.preview;
+        shot.appendChild(picture);
+        tile.appendChild(shot);
+        var label = el("div", "label", file.name);
+        label.appendChild(el("small", null, size(file.size)));
+        tile.appendChild(label);
+        tile.addEventListener("click", function () { post({ type: "file", message: message.id, index: index }); });
+        files.appendChild(tile);
+      });
+      box.appendChild(files);
+      box.loadPreviews = function () {
+        // Only once the message is open: fetching every attachment of every collapsed message would be wasteful.
+        files.querySelectorAll("img[data-src]").forEach(function (img) {
+          img.src = img.dataset.src;
+          img.removeAttribute("data-src");
+        });
+      };
+    }
+    if (message.draft) {
+      var bar = el("div", "draftbar");
+      var send = el("button", "primary", "Send");
+      send.addEventListener("click", function () { post({ type: "draft-send", message: message.id }); });
+      var discard = el("button", null, "Discard");
+      discard.addEventListener("click", function () { post({ type: "draft-discard", message: message.id }); });
+      var edit = el("button", null, "Edit");
+      edit.addEventListener("click", function () { post({ type: "draft-edit", message: message.id }); });
+      bar.appendChild(send);
+      bar.appendChild(edit);
+      bar.appendChild(discard);
+      box.appendChild(bar);
+    }
+    function toggle() {
+      box.classList.toggle("open");
+      if (!box.classList.contains("open")) return;
+      if (box.loadPreviews) box.loadPreviews();
+      fillBody(body, message);
+      // Prepared while hidden, so it could not be measured then.
+      if (body.shadowRoot) fit(body);
+    }
+    // With a mouse the message opens the instant the button goes down, not when it comes back up:
+    // waiting for the release is a tenth of a second you can feel. A finger still uses a tap, so
+    // touching a header to scroll does not open it.
+    var handledByPress = false;
+    head.addEventListener("pointerdown", function (event) {
+      if (event.pointerType !== "mouse" || event.button !== 0 || event.target.closest(".face")) return;
+      handledByPress = true;
+      toggle();
+    });
+    // A finger: the message opens the instant it lifts, if it did not travel (a scroll). Waiting for the
+    // browser's own tap event adds a beat on a phone.
+    var touchStart = null;
+    head.addEventListener("touchstart", function (event) {
+      var touch = event.touches[0];
+      touchStart = event.touches.length === 1 ? { x: touch.clientX, y: touch.clientY } : null;
+    }, { passive: true });
+    head.addEventListener("touchend", function (event) {
+      var touch = event.changedTouches[0];
+      if (event.target.closest(".face")) return;
+      if (!touchStart || Math.abs(touch.clientX - touchStart.x) > 10 || Math.abs(touch.clientY - touchStart.y) > 10) return;
+      touchStart = null;
+      event.preventDefault();
+      toggle();
+    });
+    head.addEventListener("click", function () {
+      if (handledByPress) {
+        handledByPress = false;
+        return;
+      }
+      toggle();
+    });
+    if (open) {
+      fillBody(body, message);
+      if (box.loadPreviews) box.loadPreviews();
+    }
+    return box;
+  }
+
+  // Collapsed messages are built in the background right after the thread appears, one per idle moment,
+  // so opening one later is only a matter of showing it: no parsing, no waiting.
+  var preparing = 0;
+  function prepare(payload) {
+    var ticket = ++preparing;
+    var boxes = Array.prototype.slice.call(root.querySelectorAll(".msg"));
+    var index = boxes.length - 1;
+    function step() {
+      if (ticket !== preparing || current !== payload) return;
+      while (index >= 0 && (boxes[index].classList.contains("open") || boxes[index].querySelector(".body").shadowRoot)) index--;
+      if (index < 0) return;
+      var host = boxes[index].querySelector(".body");
+      fillBody(host, payload.messages[index]);
+      // Decode its pictures now too, so they are ready the moment it opens.
+      if (host.shadowRoot) host.shadowRoot.querySelectorAll("img").forEach(function (img) {
+        if (img.decode) img.decode().catch(function () {});
+      });
+      index--;
+      setTimeout(step, 0);
+    }
+    setTimeout(step, 0);
+  }
+
+  // Benchmark builds only: tells the app how long a render took to build, to lay out and to reach the screen.
+  function reportTimings(id, started, built) {
+    void root.offsetHeight;
+    var took = performance.now() - started;
+    // How far the widest open message sticks out of its box sideways, and the shrink it was given.
+    var over = 0, zoom = "";
+    root.querySelectorAll(".msg.open > .body").forEach(function (host) {
+      over = Math.max(over, host.scrollWidth - host.clientWidth);
+      var wrapper = host.shadowRoot && host.shadowRoot.querySelector(".w");
+      if (wrapper && wrapper.style.zoom) zoom = wrapper.style.zoom;
+    });
+    post({ type: "bench", id: id, stage: "layout", build: built - started, layout: took, entered: Date.now() - took, over: over, zoom: zoom });
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        var prepared = 0;
+        root.querySelectorAll(".msg:not(.open) > .body").forEach(function (host) { if (host.shadowRoot) prepared++; });
+        post({ type: "bench", id: id, stage: "paint", clock: Date.now(), prepared: prepared });
+      });
+    });
+  }
+
+  window.blitz = {
+    // `benchId` is only passed by benchmark builds.
+    render: function (payload, benchId) {
+      var started = benchId ? performance.now() : 0;
+      // `again`: the same conversation as is on the page, sent with only the bodies that are new.
+      if (!payload.again || !current) {
+        bodies = {};
+        boxes = {};
+      }
+      Object.keys(payload.bodies || {}).forEach(function (id) {
+        bodies[id] = payload.bodies[id];
+        delete boxes[id];
+      });
+      current = payload;
+      document.body.classList.toggle("compact", !!payload.compact);
+      root.style.zoom = payload.textScale && payload.textScale !== 1 ? String(payload.textScale) : "";
+      unfitted = [];
+      if (!payload.messages || !payload.messages.length) {
+        boxes = {};
+        root.replaceChildren();
+        window.scrollTo(0, 0);
+        return;
+      }
+      var top = [el("h1", null, payload.subject || "(no subject)")];
+      if (payload.tags && payload.tags.length) {
+        var tags = el("div", "tags");
+        payload.tags.forEach(function (tag) { tags.appendChild(el("span", "tag", tag)); });
+        top.push(tags);
+      }
+      var firstOpen = null;
+      var nodes = [];
+      var kept = {};
+      payload.messages.forEach(function (message) {
+        var key = JSON.stringify(message);
+        var old = boxes[message.id];
+        // A box that shows exactly this already is used as it is.
+        var node = old && old.key === key ? old.node : renderMessage(message, old);
+        kept[message.id] = { node: node, key: key, open: message.open };
+        if (message.open && !firstOpen) firstOpen = node;
+        nodes.push(node);
+      });
+      boxes = kept;
+      var built = benchId ? performance.now() : 0;
+      var keepScroll = payload.keepScroll ? window.scrollY : 0;
+      var shown = root.querySelectorAll(":scope > .msg");
+      if (shown.length === nodes.length && nodes.every(function (node, index) { return node === shown[index]; })) {
+        // The same messages in the same order: they stay where they are, and only the title above them is replaced.
+        while (root.firstChild !== nodes[0]) root.firstChild.remove();
+        top.forEach(function (node) { root.insertBefore(node, nodes[0]); });
+      } else {
+        root.replaceChildren.apply(root, top.concat(nodes));
+      }
+      // Now that they are on the page the open messages have a width: shrink the ones too wide for the screen before
+      // the first frame, and before working out where to scroll to.
+      var fresh = unfitted;
+      unfitted = [];
+      fitAll(fresh);
+      prepare(payload);
+      if (payload.keepScroll) {
+        window.scrollTo(0, keepScroll);
+      } else if (firstOpen && firstOpen !== root.querySelector(".msg")) {
+        window.scrollTo(0, Math.max(0, firstOpen.offsetTop - 8));
+      } else {
+        window.scrollTo(0, 0);
+      }
+      if (benchId) reportTimings(benchId, started, built);
+    },
+    clear: function () {
+      current = null;
+      bodies = {};
+      boxes = {};
+      root.replaceChildren();
+      window.scrollTo(0, 0);
+    },
+    scroll: function (pages) {
+      window.scrollBy(0, Math.round(window.innerHeight * 0.85 * pages));
+    },
+    expandAll: function () {
+      if (!current) return;
+      var nodes = root.querySelectorAll(".msg");
+      var anyClosed = root.querySelector(".msg:not(.open)") != null;
+      fitLater = true;
+      nodes.forEach(function (node, index) {
+        node.classList.toggle("open", anyClosed || index === nodes.length - 1);
+        if (node.classList.contains("open")) {
+          if (node.loadPreviews) node.loadPreviews();
+          fillBody(node.querySelector(".body"), current.messages[index]);
+        }
+      });
+      fitLater = false;
+      unfitted = [];
+      // Every open message at once: fitting them one by one lays the page out once for each.
+      fitAll(Array.prototype.slice.call(root.querySelectorAll(".msg.open > .body")));
+    }
+  };
+  window.addEventListener("resize", function () {
+    fitAll(Array.prototype.slice.call(root.querySelectorAll(".msg.open > .body")));
+  });
+  post({ type: "ready" });
+})();
+</script>
+</body>
+</html>

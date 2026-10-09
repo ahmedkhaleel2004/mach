@@ -1,0 +1,1843 @@
+{
+ "one new mail, two phones and a Mac": {
+  "seen": [
+   {
+    "kind": "socket",
+    "to": "mac",
+    "email": "me@example.com",
+    "hasTime": true
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m1"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "Hello",
+       "body": "Tom & Jerry 'quoted' <b>"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m1",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m1",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "https://photos.test/ada=s192",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "apns",
+    "host": "api.sandbox.push.apple.com",
+    "device": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m1"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "Hello",
+       "body": "Tom & Jerry 'quoted' <b>"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m1",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m1",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "https://photos.test/ada=s192",
+     "avatars": false
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   }
+  ],
+  "records": {
+   "me@example.com": {
+    "historyId": "1010",
+    "devices": [
+     {
+      "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sandbox": false,
+      "avatars": true
+     },
+     {
+      "token": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "sandbox": true,
+      "avatars": false
+     }
+    ],
+    "allMail": true,
+    "watching": true
+   },
+   "me@work.example": null
+  },
+  "accounts": [
+   "me@example.com"
+  ]
+ },
+ "the same notification three times": {
+  "seen": [
+   {
+    "kind": "socket",
+    "to": "mac",
+    "email": "me@example.com",
+    "hasTime": true
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m1"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "Hello",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m1",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m1",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   },
+   {
+    "kind": "socket",
+    "to": "mac",
+    "email": "me@example.com",
+    "hasTime": true
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   },
+   {
+    "kind": "socket",
+    "to": "mac",
+    "email": "me@example.com",
+    "hasTime": true
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   }
+  ],
+  "records": {
+   "me@example.com": {
+    "historyId": "1010",
+    "devices": [
+     {
+      "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sandbox": false,
+      "avatars": true
+     }
+    ],
+    "allMail": true,
+    "watching": true
+   },
+   "me@work.example": null
+  },
+  "accounts": [
+   "me@example.com"
+  ]
+ },
+ "three notifications at once": {
+  "seen": [
+   {
+    "kind": "socket",
+    "to": "mac",
+    "email": "me@example.com",
+    "hasTime": true
+   },
+   {
+    "kind": "socket",
+    "to": "mac",
+    "email": "me@example.com",
+    "hasTime": true
+   },
+   {
+    "kind": "socket",
+    "to": "mac",
+    "email": "me@example.com",
+    "hasTime": true
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m1"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "Hello",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m1",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m1",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   }
+  ],
+  "records": {
+   "me@example.com": {
+    "historyId": "1010",
+    "devices": [
+     {
+      "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sandbox": false,
+      "avatars": true
+     }
+    ],
+    "allMail": true,
+    "watching": true
+   },
+   "me@work.example": null
+  },
+  "accounts": [
+   "me@example.com"
+  ]
+ },
+ "a burst of mail": {
+  "seen": [
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m1"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Lovelace, Ada",
+       "subtitle": "First",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m1",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m1",
+     "senderEmail": "ada@example.com",
+     "senderName": "Lovelace, Ada",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m1"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Lovelace, Ada",
+       "subtitle": "First",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m1",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m1",
+     "senderEmail": "ada@example.com",
+     "senderName": "Lovelace, Ada",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m2"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "news",
+       "subtitle": "Sale",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m2",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m2",
+     "senderEmail": "news@shop.example",
+     "senderName": "news",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m2"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "news",
+       "subtitle": "Sale",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m2",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m2",
+     "senderEmail": "news@shop.example",
+     "senderName": "news",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m6"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Grace Hopper",
+       "subtitle": "Last",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m6",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m6",
+     "senderEmail": "grace@example.com",
+     "senderName": "Grace Hopper",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m6"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Grace Hopper",
+       "subtitle": "Last",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m6",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m6",
+     "senderEmail": "grace@example.com",
+     "senderName": "Grace Hopper",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   }
+  ],
+  "records": {
+   "me@example.com": {
+    "historyId": "1060",
+    "devices": [
+     {
+      "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sandbox": false,
+      "avatars": true
+     },
+     {
+      "token": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "sandbox": false,
+      "avatars": true
+     }
+    ],
+    "allMail": true,
+    "watching": true
+   },
+   "me@work.example": null
+  },
+  "accounts": [
+   "me@example.com"
+  ]
+ },
+ "seven new mails": {
+  "seen": [
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m3"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "Number 3",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m3",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m3",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m4"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "Number 4",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m4",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m4",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m5"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "Number 5",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m5",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m5",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m6"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "Number 6",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m6",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m6",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m7"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "Number 7",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m7",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m7",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   }
+  ],
+  "records": {
+   "me@example.com": {
+    "historyId": "1070",
+    "devices": [
+     {
+      "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sandbox": false,
+      "avatars": true
+     }
+    ],
+    "allMail": true,
+    "watching": true
+   },
+   "me@work.example": null
+  },
+  "accounts": [
+   "me@example.com"
+  ]
+ },
+ "split inbox leaves out bulk mail": {
+  "seen": [
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m2"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "From a person",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m2",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m2",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   }
+  ],
+  "records": {
+   "me@example.com": {
+    "historyId": "1020",
+    "devices": [
+     {
+      "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sandbox": false,
+      "avatars": true
+     }
+    ],
+    "allMail": false,
+    "watching": true
+   },
+   "me@work.example": null
+  },
+  "accounts": [
+   "me@example.com"
+  ]
+ },
+ "a phone that no longer exists": {
+  "seen": [
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m1"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "One",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m1",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m1",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m1"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "One",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m1",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m1",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m1"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "One",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m1",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m1",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m2"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "Two",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m2",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m2",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m2"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "Two",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m2",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m2",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m3"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "Three",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m3",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m3",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m3"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "Three",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m3",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m3",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   }
+  ],
+  "records": {
+   "me@example.com": {
+    "historyId": "1030",
+    "devices": [
+     {
+      "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sandbox": false,
+      "avatars": true
+     },
+     {
+      "token": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "sandbox": false,
+      "avatars": true
+     }
+    ],
+    "allMail": true,
+    "watching": true
+   },
+   "me@work.example": null
+  },
+  "accounts": [
+   "me@example.com"
+  ]
+ },
+ "no phones, only a Mac": {
+  "seen": [
+   {
+    "kind": "socket",
+    "to": "mac",
+    "email": "me@example.com",
+    "hasTime": true
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   }
+  ],
+  "records": {
+   "me@example.com": {
+    "historyId": "1010",
+    "devices": [],
+    "allMail": true,
+    "watching": true
+   },
+   "me@work.example": null
+  },
+  "accounts": [
+   "me@example.com"
+  ]
+ },
+ "two accounts": {
+  "seen": [
+   {
+    "kind": "socket",
+    "to": "mac",
+    "email": "me@example.com",
+    "hasTime": true
+   },
+   {
+    "kind": "socket",
+    "to": "mac",
+    "email": "me@work.example",
+    "hasTime": true
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m1"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "Personal",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m1",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m1",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "w1"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Boss",
+       "subtitle": "Work",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@work.example/t-w1",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@work.example",
+     "thread": "t-w1",
+     "senderEmail": "boss@work.example",
+     "senderName": "Boss",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   }
+  ],
+  "records": {
+   "me@example.com": {
+    "historyId": "1010",
+    "devices": [
+     {
+      "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sandbox": false,
+      "avatars": true
+     }
+    ],
+    "allMail": true,
+    "watching": true
+   },
+   "me@work.example": {
+    "historyId": "1010",
+    "devices": [
+     {
+      "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sandbox": false,
+      "avatars": true
+     }
+    ],
+    "allMail": true,
+    "watching": true
+   }
+  },
+  "accounts": [
+   "me@example.com",
+   "me@work.example"
+  ]
+ },
+ "an account nobody registered": {
+  "seen": [
+   {
+    "kind": "socket",
+    "to": "mac",
+    "email": "stranger@example.com",
+    "hasTime": true
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   }
+  ],
+  "records": {
+   "me@example.com": null,
+   "me@work.example": null
+  },
+  "accounts": []
+ },
+ "change log too old": {
+  "seen": [
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m2"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "After the reset",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m2",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m2",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   }
+  ],
+  "records": {
+   "me@example.com": {
+    "historyId": "1020",
+    "devices": [
+     {
+      "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sandbox": false,
+      "avatars": true
+     }
+    ],
+    "allMail": true,
+    "watching": true
+   },
+   "me@work.example": null
+  },
+  "accounts": [
+   "me@example.com"
+  ]
+ },
+ "register, then mail": {
+  "seen": [
+   {
+    "kind": "http",
+    "path": "/register",
+    "status": 200,
+    "body": {
+     "ok": true,
+     "accounts": [
+      {
+       "email": "me@example.com",
+       "instant": true
+      },
+      {
+       "email": "me@work.example",
+       "instant": true
+      }
+     ]
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/register",
+    "status": 200,
+    "body": {
+     "ok": true,
+     "accounts": [
+      {
+       "email": "me@example.com",
+       "instant": true
+      }
+     ]
+    }
+   },
+   {
+    "kind": "socket",
+    "to": "mac",
+    "email": "me@example.com",
+    "hasTime": true
+   },
+   {
+    "kind": "apns",
+    "host": "api.sandbox.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m1"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "Welcome",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m1",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m1",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": false
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   },
+   {
+    "kind": "http",
+    "path": "/register",
+    "status": 200,
+    "body": {
+     "ok": true,
+     "accounts": [
+      {
+       "email": "me@example.com",
+       "instant": true
+      },
+      {
+       "email": "me@work.example",
+       "instant": true
+      }
+     ]
+    }
+   },
+   {
+    "kind": "socket",
+    "to": "mac",
+    "email": "me@example.com",
+    "hasTime": true
+   },
+   {
+    "kind": "apns",
+    "host": "api.sandbox.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m2"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "Sale",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m2",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m2",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   }
+  ],
+  "records": {
+   "me@example.com": {
+    "historyId": "1020",
+    "devices": [
+     {
+      "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sandbox": true,
+      "avatars": true
+     }
+    ],
+    "allMail": true,
+    "watching": true
+   },
+   "me@work.example": {
+    "historyId": "1000",
+    "devices": [
+     {
+      "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sandbox": true,
+      "avatars": true
+     }
+    ],
+    "allMail": true,
+    "watching": true
+   }
+  },
+  "accounts": [
+   "me@example.com",
+   "me@work.example"
+  ]
+ },
+ "found by the timer": {
+  "seen": [
+   {
+    "kind": "socket",
+    "to": "mac",
+    "email": "me@example.com",
+    "hasTime": true
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m1"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "Polled",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m1",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m1",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   }
+  ],
+  "records": {
+   "me@example.com": {
+    "historyId": "1010",
+    "devices": [
+     {
+      "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sandbox": false,
+      "avatars": true
+     }
+    ],
+    "allMail": true,
+    "watching": false
+   },
+   "me@work.example": null
+  },
+  "accounts": [
+   "me@example.com"
+  ]
+ },
+ "timer renews the watch": {
+  "seen": [
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m1"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "Missed notification",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m1",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m1",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   }
+  ],
+  "records": {
+   "me@example.com": {
+    "historyId": "1010",
+    "devices": [
+     {
+      "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sandbox": false,
+      "avatars": true
+     }
+    ],
+    "allMail": true,
+    "watching": true
+   },
+   "me@work.example": null
+  },
+  "accounts": [
+   "me@example.com"
+  ]
+ },
+ "a snooze comes due": {
+  "seen": [
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "old"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "Later",
+       "body": "Back in your inbox."
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t9",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t9",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "socket",
+    "to": "mac",
+    "email": "me@example.com",
+    "hasTime": true
+   }
+  ],
+  "records": {
+   "me@example.com": {
+    "historyId": "1000",
+    "devices": [
+     {
+      "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sandbox": false,
+      "avatars": true
+     }
+    ],
+    "allMail": true,
+    "watching": true
+   },
+   "me@work.example": null
+  },
+  "accounts": [
+   "me@example.com"
+  ]
+ },
+ "signed out": {
+  "seen": [
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m1"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "Before",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m1",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m1",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   },
+   {
+    "kind": "http",
+    "path": "/unregister",
+    "status": 200,
+    "body": {
+     "ok": true
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   }
+  ],
+  "records": {
+   "me@example.com": null,
+   "me@work.example": {
+    "historyId": "1000",
+    "devices": [
+     {
+      "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sandbox": false,
+      "avatars": true
+     }
+    ],
+    "allMail": true,
+    "watching": true
+   }
+  },
+  "accounts": [
+   "me@work.example"
+  ]
+ },
+ "test push and wrong secrets": {
+  "seen": [
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "test"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "You",
+       "subtitle": "Push is working",
+       "body": "New mail for me@example.com will look like this."
+      },
+      "sound": "default",
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "senderEmail": "me@example.com",
+     "senderName": "You",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/test",
+    "status": 200,
+    "body": {
+     "results": [
+      {
+       "email": "me@example.com",
+       "ok": true
+      }
+     ]
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/test",
+    "status": 403,
+    "body": {
+     "error": "forbidden"
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/wrong",
+    "status": 403,
+    "body": {
+     "error": "forbidden"
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/register",
+    "status": 403,
+    "body": {
+     "error": "forbidden"
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/register",
+    "status": 400,
+    "body": {
+     "error": "bad request"
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/",
+    "status": 200,
+    "body": "Mach push relay"
+   }
+  ],
+  "records": {
+   "me@example.com": {
+    "historyId": "1000",
+    "devices": [
+     {
+      "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sandbox": false,
+      "avatars": true
+     }
+    ],
+    "allMail": true,
+    "watching": true
+   },
+   "me@work.example": null
+  },
+  "accounts": [
+   "me@example.com"
+  ]
+ },
+ "mail, sleep, mail": {
+  "seen": [
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m1"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "Before the nap",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m1",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m1",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   },
+   {
+    "kind": "apns",
+    "host": "api.push.apple.com",
+    "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "authorization": "bearer <jwt>",
+    "headers": {
+     "apns-topic": "app.blitzmail.ios",
+     "apns-push-type": "alert",
+     "apns-priority": "10",
+     "apns-collapse-id": "m2"
+    },
+    "body": {
+     "aps": {
+      "alert": {
+       "title": "Ada Lovelace",
+       "subtitle": "After the nap",
+       "body": "A short & friendly note"
+      },
+      "sound": "default",
+      "thread-id": "me@example.com/t-m2",
+      "content-available": 1,
+      "mutable-content": 1
+     },
+     "account": "me@example.com",
+     "thread": "t-m2",
+     "senderEmail": "ada@example.com",
+     "senderName": "Ada Lovelace",
+     "senderPhoto": "",
+     "avatars": true
+    }
+   },
+   {
+    "kind": "http",
+    "path": "/pubsub/<secret>",
+    "status": 204,
+    "body": null
+   }
+  ],
+  "records": {
+   "me@example.com": {
+    "historyId": "1020",
+    "devices": [
+     {
+      "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sandbox": false,
+      "avatars": true
+     }
+    ],
+    "allMail": true,
+    "watching": true
+   },
+   "me@work.example": null
+  },
+  "accounts": [
+   "me@example.com"
+  ]
+ }
+}

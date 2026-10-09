@@ -1,0 +1,27 @@
+name = "blitzmail-relay"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[triggers]
+crons = ["* * * * *"]
+
+[[kv_namespaces]]
+binding = "STORE"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "Hub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Hub"]
+
+[vars]
+BUNDLE_ID = "app.blitzmail.ios"
+# Map of Google project number (the digits before the first "-" in an OAuth client id) to a Pub/Sub topic.
+# Leave empty to poll once a minute instead.
+TOPICS = "{}"
+
+# Secrets, set with `wrangler secret put`: RELAY_SECRET, APNS_KEY (the .p8 text), APNS_KEY_ID, APNS_TEAM_ID

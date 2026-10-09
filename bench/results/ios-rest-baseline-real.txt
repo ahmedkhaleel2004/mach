@@ -1,0 +1,49 @@
+compose.idle_frame           median     0.63  p90     0.63  n=1   
+compose.open.cold            median 10342.51  p90 10342.51  n=1   call=2.678  cpu_first_frame=835.1  first_frame=9120  keyboard_did=6.423e+04  keyboard_will=8757  n_ComposeView=2  n_PhoneRoot=1  responder=9124
+compose.type.to              median    10.36  p90    14.13  n=6   letters=8  n_ComposeView=1  n_PhoneRoot=1  n_contactsLookup=1  wall=39.93
+compose.type.subject         median     9.39  p90    11.42  n=6   letters=20  n_ComposeView=1  n_PhoneRoot=1  wall=27.77
+compose.type.body            median    10.43  p90    12.98  n=6   letters=49  n_ComposeView=1  n_PhoneRoot=1  wall=23.88
+compose.type.body_long       median    15.54  p90    45.55  n=6   letters=32  n_ComposeView=1  n_PhoneRoot=1  wall=25.01
+compose.typed                median     0.00  p90     0.00  n=6   body=2097  subject=20  to=8
+compose.close                median    45.26  p90   447.79  n=6   n_ComposeView=1  n_PhoneRoot=1  wall=270.1
+compose.open.warm            median   169.95  p90  6969.66  n=5   call=1.482  cpu_first_frame=129.9  first_frame=834.7  keyboard_did=1583  keyboard_will=1164  n_ComposeView=2  n_PhoneRoot=1  responder=834.7
+reply.thread200              median   155.21  p90   516.71  n=5   call=2.09  cpu_first_frame=57.47  first_frame=440.4  keyboard_did=1092  keyboard_will=682  n_ComposeView=2  n_PhoneRoot=1  responder=440.4
+reply.thread200.type         median    11.87  p90    63.42  n=5   letters=15  n_ComposeView=1  n_PhoneRoot=1  wall=21.13
+reply.thread200.close        median    28.28  p90    38.88  n=5   n_ComposeView=1  n_PhoneRoot=1  wall=49.66
+reply_all.thread200          median   111.27  p90   166.86  n=5   call=5.61  cpu_first_frame=63.86  first_frame=126.5  keyboard_did=703  keyboard_will=279.5  n_ComposeView=2  n_PhoneRoot=1  responder=126.5
+reply_all.thread200.type     median    11.91  p90    17.92  n=5   letters=15  n_ComposeView=1  n_PhoneRoot=1  wall=36.89
+reply_all.thread200.close    median    28.54  p90    34.91  n=5   n_ComposeView=1  n_PhoneRoot=1  wall=78.21
+forward.thread200            median   116.19  p90   187.06  n=5   call=0.1989  cpu_first_frame=48.27  first_frame=97.85  keyboard_did=584.9  keyboard_will=196.4  n_ComposeView=2  n_PhoneRoot=1  responder=97.89
+forward.thread200.type       median    12.43  p90   237.96  n=5   letters=15  n_ComposeView=1  n_PhoneRoot=1  n_contactsLookup=0.87  wall=29.09
+forward.thread200.close      median    47.51  p90    53.54  n=5   n_ComposeView=1  n_PhoneRoot=1  wall=77.58
+reply.news150                median   145.36  p90   319.91  n=5   call=4.207  cpu_first_frame=61.1  first_frame=155.9  keyboard_did=623.4  keyboard_will=213.9  n_ComposeView=2  n_PhoneRoot=1  responder=155.9
+reply.news150.type           median    12.27  p90    14.87  n=5   letters=15  n_ComposeView=1  n_PhoneRoot=1  wall=25.79
+reply.news150.close          median    30.21  p90    44.89  n=5   n_ComposeView=1  n_PhoneRoot=1  wall=92.05
+reply_all.news150            median   126.19  p90   241.21  n=5   call=2.924  cpu_first_frame=48.45  first_frame=89.79  keyboard_did=550.8  keyboard_will=151.9  n_ComposeView=2  n_PhoneRoot=1  responder=89.85
+reply_all.news150.type       median    12.58  p90    13.72  n=5   letters=15  n_ComposeView=1  n_PhoneRoot=1  wall=18.8
+reply_all.news150.close      median    30.80  p90    71.05  n=5   n_ComposeView=1  n_PhoneRoot=1  wall=62.34
+forward.news150              median   151.93  p90   183.14  n=5   call=0.4078  cpu_first_frame=70.92  first_frame=126.6  keyboard_did=585.9  keyboard_will=179.2  n_ComposeView=2  n_PhoneRoot=1  responder=126.6
+forward.news150.type         median    14.46  p90    17.06  n=5   letters=15  n_ComposeView=1  n_PhoneRoot=1  n_contactsLookup=0.87  wall=24.81
+forward.news150.close        median    45.87  p90    47.53  n=5   n_ComposeView=1  n_PhoneRoot=1  wall=71.87
+send.new                     median    52.89  p90   162.52  n=5   call=0.1038  gone=1  n_ComposeView=1  n_PhoneRoot=1  wall=140.2
+send.thread200               median    39.23  p90    50.53  n=5   call=0.07921  gone=1  n_ComposeView=1  n_PhoneRoot=1  wall=88.49
+send.news150                 median    58.57  p90   184.44  n=5   call=0.08463  gone=1  n_ComposeView=1  n_PhoneRoot=2  wall=181.5
+search.idle_frame            median     0.06  p90     0.06  n=1   
+search.open.cold             median 31854.62  p90 31854.62  n=1   call=0.244  cpu_first_frame=2.906e+04  first_frame=1.302e+05  keyboard_did=-1  keyboard_will=1.384e+05  n_PhoneRoot=1  responder=1.302e+05
+search.type                  median    13.66  p90  4410.08  n=5   letters=10  lookup_alone=3.143  n_PhoneRoot=1.6  n_SwipeRow=2.6  results=0  wall=72.46
+search.close                 median  7789.99  p90 19018.69  n=5   n_PhoneRoot=1  n_SwipeRow=8  wall=2.986e+04
+search.open.warm             median 18053.46  p90 30065.53  n=4   call=1.33  cpu_first_frame=5102  first_frame=1.395e+04  keyboard_did=-1  keyboard_will=5.304e+04  n_PhoneRoot=1  responder=5.304e+04
+overlay.palette.open         median    63.31  p90   103.17  n=8   n_OverlayLayer=1  wall=134.3
+overlay.palette.type         median     6.14  p90     9.76  n=8   letters=4  wall=25.47
+overlay.palette.close        median    25.98  p90    34.22  n=8   n_OverlayLayer=1  wall=41.28
+overlay.snooze.open          median     7.44  p90    10.37  n=8   n_OverlayLayer=1  wall=18.48
+overlay.snooze.close         median     2.48  p90     2.81  n=8   n_OverlayLayer=1  wall=17.39
+overlay.accounts.open        median     7.13  p90    19.57  n=8   n_OverlayLayer=1  wall=40.85
+overlay.accounts.close       median     1.74  p90     2.40  n=8   n_OverlayLayer=1  wall=33.34
+overlay.lists.open           median     3.79  p90    16.54  n=8   n_OverlayLayer=1  wall=26.68
+overlay.lists.close          median     1.47  p90     2.96  n=8   n_OverlayLayer=1  wall=18.16
+overlay.more.open            median     4.61  p90     8.93  n=8   n_OverlayLayer=1  wall=50
+overlay.more.close           median     1.48  p90     2.82  n=8   n_OverlayLayer=1  wall=32.71
+toast.show                   median     5.51  p90     9.57  n=8   n_PhoneRoot=1  wall=20.09
+toast.hide                   median     4.17  p90     4.84  n=8   n_PhoneRoot=1  wall=18.77
+idle.cpu                     median    23.22  p90    23.22  n=1   cpu_main=9.429  seconds=30  wakeups_per_minute=246
