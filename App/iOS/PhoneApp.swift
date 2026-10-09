@@ -146,7 +146,7 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
         // real mail listens to nothing.
         guard Bootstrap.offline else { return }
         let keys = ["j", "k", "e", "s", "u", "c", "r", "a", "f", "h", "z", "x", "o", "enter", "escape", "tab", "palette", "search", "send", "type",
-                    "demoLeft", "demoRight", "style1", "style2", "style3", "lists", "face", "details", "bigface", "discard", "drafts", "discardCompose", "replyDetails", "typeLong", "back"]
+                    "demoLeft", "demoRight", "style1", "style2", "style3", "lists", "face", "details", "scrollDown", "fling", "bigface", "discard", "drafts", "discardCompose", "replyDetails", "typeLong", "back"]
         for key in keys {
             let name = "com.ahmedkhaleel.mach.key.\(key)" as CFString
             CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), nil, { _, _, name, _, _ in
@@ -184,6 +184,14 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
             case "discard": model.web.webView.evaluateJavaScript("document.querySelector('.draftbar button:nth-child(3)').click()", completionHandler: nil)
             case "drafts": model.go(.drafts)
             case "discardCompose": model.closeCompose(discard: true)
+            case "scrollDown":
+                let scroll = model.web.webView.scrollView
+                scroll.setContentOffset(CGPoint(x: 0, y: max(0, scroll.contentSize.height - scroll.bounds.height)), animated: false)
+            case "fling":
+                // Archive while the page is still gliding, the way a thumb does it.
+                let scroll = model.web.webView.scrollView
+                scroll.setContentOffset(CGPoint(x: 0, y: max(0, scroll.contentSize.height - scroll.bounds.height)), animated: true)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { model.markDone() }
             case "details": model.web.webView.evaluateJavaScript("document.querySelector('.msg.open .to').click()", completionHandler: nil)
             case "face": model.web.webView.evaluateJavaScript("document.querySelector('.face').click()", completionHandler: nil)
             case "style1", "style2", "style3": UserDefaults.standard.set(Int(String(key.last!)) ?? 1, forKey: "swipeStyle")
@@ -590,7 +598,8 @@ struct PhoneToast: View {
         if let toast = model.toast {
             VStack {
                 Spacer()
-                ToastView(toast: toast, undoHint: "Undo").padding(.bottom, 70)
+                // Over an open conversation it clears the Done button and the reply buttons under it.
+                ToastView(toast: toast, undoHint: "Undo").padding(.bottom, model.openThread != nil && !model.inlineReply ? Theme.pt(92) + 30 : 70)
             }
         }
     }
@@ -656,33 +665,34 @@ struct PhoneRoot: View {
     }
 }
 
-/// Reply, Reply All, Forward and Archive, floating over the foot of an open conversation. A view of its own, and
+/// Done (archive) above Reply, Reply All and Forward, floating over the foot of an open conversation. A view of its own, and
 /// gone while a reply is being written there: its Send takes their place.
 private struct ThreadButtons: View {
     let model: AppModel
 
     var body: some View {
         if !model.inlineReply {
-            HStack(spacing: 10) {
-                HStack(spacing: 8) {
+            VStack(alignment: .trailing, spacing: 10) {
+                // The one thing you do to most mail, so it is the biggest thing here and sits under the thumb.
+                Button(action: { model.markDone() }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark").font(.system(size: Theme.pt(17), weight: .bold))
+                        Text("Done").font(.system(size: Theme.pt(18), weight: .semibold))
+                    }
+                    .foregroundStyle(Theme.background)
+                    .padding(.horizontal, 24)
+                    .frame(height: Theme.pt(50))
+                    .background(Theme.accent, in: Capsule())
+                    .shadow(color: .black.opacity(0.25), radius: 8, y: 3)
+                }
+                HStack(spacing: 10) {
                     replyButton("Reply", icon: "arrowshape.turn.up.left") { model.startReply(all: false) }
                     replyButton("Reply All", icon: "arrowshape.turn.up.left.2") { model.startReply(all: true) }
                     replyButton("Forward", icon: "arrowshape.turn.up.right") { model.startForward() }
                 }
-                // The one thing you do to most mail, so it sits under the thumb: where Compose is on the list.
-                Button(action: { model.markDone() }) {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: Theme.pt(20), weight: .bold))
-                        .foregroundStyle(Theme.background)
-                        .frame(width: 54, height: 54)
-                        .background(Theme.accent, in: Circle())
-                        .shadow(color: .black.opacity(0.25), radius: 8, y: 3)
-                }
-                .accessibilityLabel("Archive")
             }
-            .padding(.leading, 14)
-            .padding(.trailing, 18)
-            .padding(.bottom, 18)
+            .padding(.horizontal, 14)
+            .padding(.bottom, 6)
         }
     }
 

@@ -147,6 +147,13 @@ final class ThreadWeb: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
 
     func render(_ payload: [String: Any]) {
         guard let data = try? JSONSerialization.data(withJSONObject: payload), let json = String(data: data, encoding: .utf8) else { return }
+        #if os(iOS)
+        // A page still gliding from a flick (archive pressed mid-scroll) carries on gliding over the next
+        // conversation, and undoes the page's own move to its top. Setting the place it is at stops the glide.
+        if payload["keepScroll"] as? Bool != true {
+            webView.scrollView.setContentOffset(webView.scrollView.contentOffset, animated: false)
+        }
+        #endif
         #if DEBUG || BENCH
         ThreadBench.lap("json")
         #endif
