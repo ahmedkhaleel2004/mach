@@ -37,7 +37,7 @@ export class Hub {
     if (url.pathname === "/event") {
       // A Gmail notification: running apps hear at once, then the phones are pushed. One call does both.
       this.notify(email);
-      return json(await this.serial(email, () => check(this.env, email, this.kept, url.searchParams.get("historyId"))).catch((error) => ({ error: String(error) })));
+      return json(await this.serial(email, () => check(this.env, email, this.kept, url.searchParams.get("historyId") || url.searchParams.get("watch"))).catch((error) => ({ error: String(error) })));
     }
     if (url.pathname === "/check") {
       return json(await this.serial(email, () => check(this.env, email, this.kept)).catch((error) => ({ error: String(error) })));
@@ -258,7 +258,7 @@ async function watchOutlook(env, account) {
     method: "POST",
     body: JSON.stringify({
       changeType: "created,updated,deleted",
-      notificationUrl: `${account.origin}/outlook/${env.RELAY_SECRET}?email=${encodeURIComponent(account.email)}`,
+      notificationUrl: `${account.origin}/outlook/${await hookWord(env, account.email)}?email=${encodeURIComponent(account.email)}`,
       resource: "me/mailFolders('inbox')/messages",
       expirationDateTime,
       clientState: await clientState(env, account.email),
@@ -282,6 +282,18 @@ async function clientState(env, email) {
   return b64url(digest).slice(0, 40);
 }
 
+/// The word in the address Outlook is given for one account. Outlook keeps that address, so it is made from the
+/// relay's secret and never is it: knowing one account's word opens nothing else here.
+async function hookWord(env, email) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${env.RELAY_SECRET} outlook address ${email}`));
+  return b64url(digest).slice(0, 40);
+}
+
+/// Ends a watch Outlook still holds. Best effort: one that cannot be ended runs out by itself within a week.
+async function endWatch(env, account, id) {
+  if (id) await graph(env, account, `/subscriptions/${id}`, { method: "DELETE" }).catch(() => {});
+}
+
 /// A short stand-in for an Outlook id, which is too long for Apple to group banners by.
 async function shortId(id) {
   return b64url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(id))).slice(0, 40);
@@ -300,8 +312,12 @@ async function unreadOutlook(env, account) {
 
 /// The same job as `check`, for Outlook: pushes each message that reached the inbox since the last look.
 /// Outlook has no change log to keep a place in; the place kept is the arrival time of the newest mail seen.
-async function checkOutlook(env, account, kept) {
+async function checkOutlook(env, account, kept, notified) {
   const email = account.email;
+  if (notified && account.subscription && !notified.split(",").includes(account.subscription)) {
+    for (const stray of notified.split(",").slice(0, 3)) await endWatch(env, account, stray);
+    return { email, sent: 0, stray: true };
+  }
   if (!account.since) {
     account.since = new Date().toISOString();
     await saveAccount(env, account, kept);
@@ -536,7 +552,7 @@ async function check(env, email, kept, notified) {
     return { email, skipped: true };
   }
   account.devices = account.devices || [];
-  if (isOutlook(account)) return checkOutlook(env, account, kept);
+  if (isOutlook(account)) return checkOutlook(env, account, kept, notified);
   if (!account.historyId) {
     const profile = await (await gmail(env, account, "/profile")).json();
     account.historyId = profile.historyId;
@@ -708,7 +724,13 @@ async function wake(env, email, kept) {
 async function registerAccount(env, email, entry, kept) {
   const account = (await loadAccount(env, email, kept)) || { email, devices: [] };
   if (entry.provider === "microsoft") return registerOutlook(env, account, entry, kept);
-  const changed = account.refreshToken !== entry.refreshToken || account.clientId !== entry.clientId
+  // An address that was an Outlook account here starts clean, so a Google token never goes to Microsoft.
+  const switched = isOutlook(account);
+  if (switched) {
+    await endWatch(env, account, account.subscription);
+    for (const key of ["provider", "subscription", "since", "origin", "watchExpiry", "watchError"]) delete account[key];
+  }
+  const changed = switched || account.refreshToken !== entry.refreshToken || account.clientId !== entry.clientId
     || (account.allMail !== false) !== (entry.allMail !== false);
   account.allMail = entry.allMail !== false;
   account.refreshToken = entry.refreshToken;
@@ -747,7 +769,19 @@ async function registerAccount(env, email, entry, kept) {
 async function registerOutlook(env, account, entry, kept) {
   const email = account.email;
   const before = JSON.stringify(account);
-  const fresh = account.provider !== "microsoft" || account.clientId !== entry.clientId || account.origin !== entry.origin;
+  // `hook` is the word in the address Outlook was given; a watch made with another one is made again.
+  const word = await hookWord(env, email);
+  const fresh = account.provider !== "microsoft" || account.clientId !== entry.clientId || account.origin !== entry.origin || account.hook !== word;
+  if (account.provider !== "microsoft") {
+    // The address was a Gmail account here: stop Gmail's notifications with the Google token before it is replaced.
+    if (account.refreshToken) await gmail(env, account, "/stop", { method: "POST" }).catch(() => {});
+    for (const key of ["historyId", "watchExpiry", "watchError"]) delete account[key];
+    forgetToken(email);
+    await env.STORE.delete(`token:${email}`);
+  } else if (fresh) {
+    // A new key or a new address for this relay: the watch made under the old one is ended, not left running.
+    await endWatch(env, account, account.subscription);
+  }
   account.provider = "microsoft";
   account.allMail = entry.allMail !== false;
   account.refreshToken = entry.refreshToken;
@@ -755,6 +789,7 @@ async function registerOutlook(env, account, entry, kept) {
   account.clientSecret = "";
   // Where Outlook can reach this relay: the address the app itself reached it at.
   account.origin = entry.origin;
+  account.hook = word;
   account.devices = (account.devices || []).filter((d) => d.token !== entry.deviceToken);
   if (entry.deviceToken) account.devices.push({ token: entry.deviceToken, sandbox: !!entry.sandbox, avatars: entry.avatars !== false });
   if (fresh) {
@@ -780,9 +815,8 @@ async function registerOutlook(env, account, entry, kept) {
 /// Signed out: stop the service's notifications and delete everything held for the account.
 async function forget(env, email, kept) {
   const account = await loadAccount(env, email, kept);
-  if (account && isOutlook(account)) {
-    if (account.subscription) await graph(env, account, `/subscriptions/${account.subscription}`, { method: "DELETE" }).catch(() => {});
-  } else if (account) await gmail(env, account, "/stop", { method: "POST" }).catch(() => {});
+  if (account && isOutlook(account)) await endWatch(env, account, account.subscription);
+  else if (account) await gmail(env, account, "/stop", { method: "POST" }).catch(() => {});
   await env.STORE.delete(`account:${email}`);
   kept?.accounts.delete(email);
   if (kept) {
@@ -850,16 +884,19 @@ export default {
       return new Response(null, { status: 204 });
     }
     if (request.method === "POST" && url.pathname.startsWith("/outlook/")) {
-      if (!safeEqual(url.pathname.slice(9), env.RELAY_SECRET)) return json({ error: "forbidden" }, 403);
+      // The address holds a word made for this one account (see `hookWord`), which Outlook was given and keeps.
+      const email = String(url.searchParams.get("email") || "").toLowerCase();
+      if (!email || !safeEqual(url.pathname.slice(9), await hookWord(env, email))) return json({ error: "forbidden" }, 403);
       // Outlook first asks the address to say a word back, to prove it is listening.
       const proof = url.searchParams.get("validationToken");
       if (proof !== null) return new Response(proof, { status: 200, headers: { "content-type": "text/plain" } });
       try {
-        const email = String(url.searchParams.get("email") || "").toLowerCase();
         const expected = await clientState(env, email);
         const body = await request.json();
-        if (email && (body.value || []).some((item) => safeEqual(item.clientState || "", expected))) {
-          ctx.waitUntil(hub(env).fetch(`https://hub/event?email=${encodeURIComponent(email)}`).catch((error) => console.log(String(error))));
+        const watches = [...new Set((body.value || []).filter((item) => safeEqual(item.clientState || "", expected)).map((item) => String(item.subscriptionId || "")))]
+          .filter((id) => /^[0-9a-f-]{8,64}$/i.test(id)).slice(0, 5);
+        if (watches.length) {
+          ctx.waitUntil(hub(env).fetch(`https://hub/event?email=${encodeURIComponent(email)}&watch=${watches.join(",")}`).catch((error) => console.log(String(error))));
         }
       } catch (error) {
         console.log(`bad outlook notification: ${error}`);
