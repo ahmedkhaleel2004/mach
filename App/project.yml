@@ -158,6 +158,8 @@ targets:
           - "*.entitlements"
       - path: Shared/AvatarStore.swift
       - path: Shared/BrandMark.swift
+      # Finds the sign-in code in a pushed mail, so its banner can offer to copy it.
+      - path: ../Core/Sources/MachCore/OneTimeCode.swift
     info:
       path: NotifyExtension/Info.plist
       properties:

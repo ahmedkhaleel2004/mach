@@ -6,6 +6,8 @@ struct Toast: Identifiable {
     let id = UUID()
     var text: String
     var undo: (() -> Void)?
+    /// What the button says when it is not an undo.
+    var action: String?
 }
 
 enum Overlay: Equatable {
@@ -255,7 +257,8 @@ final class AppModel {
     var toast: Toast?
     var unread: [String: Int] = [:]
     var offline = false
-    var signingIn = false
+    /// The service a sign-in is waiting on, while one is under way.
+    var signingIn: MailProvider?
     var loaded = false
     /// How far the open conversation has been dragged to the right by a back swipe.
     var backDrag: CGFloat = 0
@@ -715,6 +718,23 @@ final class AppModel {
             service.modify(account: account, threadIds: [threadId], remove: [SystemLabel.unread])
         }
         service.completeThreadIfNeeded(account: account, threadId: threadId)
+        // A mail that is there to hand over a code: offer the code.
+        if let code = CodeAge.fresh(thread, within: CodeAge.opened) {
+            show(Toast(text: "Code \(code)", undo: { [weak self] in self?.copyCode(thread) }, action: compact ? "Copy" : "Copy (⇧C)"))
+        }
+    }
+
+    /// Copies a conversation's sign-in code: the given one, else the open one, else the one under the cursor,
+    /// else the newest in the list that has a code.
+    func copyCode(_ thread: MailThread? = nil) {
+        let cursor = cursorIndex.map { rows[$0] }
+        let candidates = [thread, openThread, cursor].compactMap { $0 } + rows.prefix(50).filter { CodeAge.fresh($0) != nil }
+        guard let code = candidates.first(where: { $0.code != nil })?.code else {
+            show(Toast(text: "No sign-in code here."))
+            return
+        }
+        Clipboard.copy(code)
+        show(Toast(text: "Copied \(code)."))
     }
 
     /// A back swipe on the open conversation. The conversation follows the fingers exactly; letting go past the
@@ -1601,27 +1621,40 @@ final class AppModel {
     func cancelSignIn() {
         signInTask?.cancel()
         signInTask = nil
-        signingIn = false
+        signingIn = nil
     }
 
-    func signIn() {
+    /// The services this build can add accounts for.
+    var signInChoices: [MailProvider] {
+        (hasGoogleKey ? [MailProvider.google] : []) + (service.microsoftClient != nil ? [.microsoft] : [])
+    }
+
+    private var hasGoogleKey: Bool {
+        #if os(iOS)
+        service.client.worksOnPhone
+        #else
+        !service.client.clientId.isEmpty
+        #endif
+    }
+
+    func signIn(_ provider: MailProvider = .google) {
         // Pressing again starts over, so an abandoned browser tab never leaves the button dead.
         signInTask?.cancel()
-        signingIn = true
+        signingIn = provider
         signInTask = Task {
             do {
                 #if os(iOS)
                 let present = presentSignIn
-                let account = try await service.signIn { url, scheme in try await present(url, scheme) }
+                let account = try await service.signIn(provider: provider) { url, scheme in try await present(url, scheme) }
                 #else
                 let opener = openSignIn
-                let account = try await service.signIn { url in
+                let account = try await service.signIn(provider: provider) { url in
                     Task { @MainActor in opener(url) }
                 }
                 #endif
                 guard !Task.isCancelled else { return }
                 signInFinished()
-                signingIn = false
+                signingIn = nil
                 overlay = nil
                 AvatarStore.shared.forgetMisses()
                 accountsChanged()
@@ -1629,7 +1662,7 @@ final class AppModel {
             } catch {
                 guard !Task.isCancelled, !(error is CancellationError) else { return }
                 signInFinished()
-                signingIn = false
+                signingIn = nil
                 show(Toast(text: error.localizedDescription))
             }
         }
@@ -1680,6 +1713,7 @@ final class AppModel {
             Command(title: "Mark as Spam", keys: "!") { [weak self] in self?.markSpam() },
             Command(title: "Move to Inbox") { [weak self] in self?.moveToInbox() },
             Command(title: "Undo", keys: "Z") { [weak self] in self?.undo() },
+            Command(title: "Copy Sign-in Code", keys: "⇧C") { [weak self] in self?.copyCode() },
             Command(title: "Search", keys: "/") { [weak self] in self?.startSearch() },
             Command(title: "Select All", keys: "⌘A") { [weak self] in self?.selectAll() },
             Command(title: "Check for New Mail", keys: "⌘R") { [weak self] in self?.refresh() },
@@ -1914,6 +1948,7 @@ final class AppModel {
         case "a": startReply(all: true)
         case "f": startForward()
         case "c": startCompose()
+        case "C": copyCode()
         case "b", "h": askSnooze()
         case "z": undo()
         case "x": if openThread == nil { toggleSelect() }

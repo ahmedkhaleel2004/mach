@@ -219,7 +219,6 @@ public actor AccountSync {
         let known = try store.knownMessageIds(account: accountId, among: ids)
         let missing = ids.filter { !known.contains($0) }
         let api = self.api
-        let accountId = self.accountId
         var index = 0
         // Small waves so the first rows reach the screen at once.
         while index < missing.count {
@@ -231,7 +230,6 @@ public actor AccountSync {
             // holding rows back until all twenty are here kept mail off the screen for seconds. Urgent downloads are
             // not paced, their answers arrive together, and one write for all of them is the quickest.
             let arrivals = Arrivals()
-            let store = self.store
             try await withThrowingTaskGroup(of: Void.self) { group in
                 for id in wave {
                     group.addTask {

@@ -17,6 +17,8 @@ struct WideRow: View {
     var today = 0
     /// A reply to this conversation has been started and not sent.
     var hasDraft = false
+    /// Copies the conversation's sign-in code. Not part of what makes two rows the same.
+    var copyCode: (() -> Void)?
     @AppStorage(AvatarStore.settingKey) private var avatars = true
     /// One number sizes the whole row: text, picture, spacing and height. Set by the slider in settings.
     @AppStorage(Theme.scaleKey) private var scale = Theme.defaultScale
@@ -52,6 +54,9 @@ struct WideRow: View {
                 .lineLimit(1)
                 .padding(.leading, 14 * k)
             Spacer(minLength: 12)
+            if let code = CodeAge.fresh(thread) {
+                CodeChip(code: code, scale: k, action: copyCode).padding(.trailing, 8)
+            }
             if thread.starred {
                 Image(systemName: "star.fill").font(.system(size: Theme.pt(10) * k)).foregroundStyle(Theme.accent).padding(.trailing, 8)
             }
@@ -107,6 +112,8 @@ struct CompactRow: View, Equatable {
     /// How an unread conversation is marked. 1: a dot on the picture. 2: bold text and a coloured time, no dot.
     /// 3: a dot beside the time. 4: a coloured bar on the row's left edge. 0: the old dot in a gutter.
     var style = 1
+    /// Copies the conversation's sign-in code. Not part of what makes two rows the same.
+    var copyCode: (() -> Void)?
 
     private var dot: some View { Circle().fill(Theme.accent).frame(width: 9, height: 9) }
 
@@ -179,6 +186,9 @@ struct CompactRow: View, Equatable {
                         .foregroundStyle(Theme.faint)
                         .lineLimit(1)
                     Spacer(minLength: 0)
+                    if let code = CodeAge.fresh(thread) {
+                        CodeChip(code: code, scale: 1.12, action: copyCode)
+                    }
                     if !tag.isEmpty {
                         Text(tag).font(.system(size: Theme.pt(11))).foregroundStyle(Theme.faint)
                             .padding(.horizontal, 6).padding(.vertical, 1)
@@ -471,7 +481,7 @@ struct ToastView: View {
             Text(toast.text).font(.system(size: Theme.pt(13))).foregroundStyle(Theme.text).lineLimit(2)
             if let undo = toast.undo {
                 Button(action: undo) {
-                    Text(undoHint).font(.system(size: Theme.pt(13), weight: .semibold)).foregroundStyle(Theme.accent)
+                    Text(toast.action ?? undoHint).font(.system(size: Theme.pt(13), weight: .semibold)).foregroundStyle(Theme.accent)
                 }
                 .buttonStyle(.plain)
             }
@@ -661,7 +671,7 @@ struct HelpView: View {
         ("R / A / F", "Reply / reply all / forward"), ("C", "Compose"), ("⌘ Enter", "Send"),
         ("/", "Search"), ("⌘ K", "Command bar"), ("Z", "Undo"), ("X", "Select"), ("⌘ A", "Select all"),
         ("1 to 9", "Go to a list, in the order along the top"), ("G then I S T D A", "Go to Inbox, Starred, Sent, Drafts, All Mail"), ("⌃ 1 2 3", "Switch account"),
-        ("Space / N / P", "Scroll the conversation"), ("O", "Expand all messages"),
+        ("Space / N / P", "Scroll the conversation"), ("O", "Expand all messages"), ("⇧C", "Copy the sign-in code"),
     ]
 
     var body: some View {
@@ -758,15 +768,18 @@ struct AccountsView: View {
                         model.switchAccount(account.id)
                     }
                 }
-                Button(action: { model.signIn() }) {
-                    Text(model.signingIn ? "Waiting for Google…" : "Add a Gmail account")
-                        .font(.system(size: Theme.pt(14), weight: .semibold))
-                        .foregroundStyle(Theme.accent)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(14)
-                        .contentShape(Rectangle())
+                ForEach(model.signInChoices, id: \.self) { provider in
+                    Button(action: { model.signIn(provider) }) {
+                        Text(model.signingIn == provider ? "Waiting for \(provider == .google ? "Google" : "Microsoft")…" : "Add \(provider == .google ? "a Gmail" : "an Outlook") account")
+                            .font(.system(size: Theme.pt(14), weight: .semibold))
+                            .foregroundStyle(Theme.accent)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
                 Rectangle().fill(Theme.line).frame(height: 1)
                 ThemePicker(model: model)
                 Rectangle().fill(Theme.line).frame(height: 1)
@@ -957,12 +970,19 @@ struct WelcomeView: View {
     var body: some View {
         VStack(spacing: 14) {
             Text("Mach").font(.system(size: Theme.pt(34), weight: .bold)).foregroundStyle(Theme.text)
-            Text("Fast, free, open-source mail for Gmail.").font(.system(size: Theme.pt(15))).foregroundStyle(Theme.dim)
-            if hasClient {
-                Button(action: { model.signIn() }) { GoogleButton() }
-                    .buttonStyle(.plain)
-                    .padding(.top, 10)
-                Text("Waiting for Google…").font(.system(size: Theme.pt(13))).foregroundStyle(Theme.faint).opacity(model.signingIn ? 1 : 0)
+            Text("Fast, free, open-source mail for Gmail and Outlook.").font(.system(size: Theme.pt(15))).foregroundStyle(Theme.dim)
+            if hasClient || model.service.microsoftClient != nil {
+                if hasClient {
+                    Button(action: { model.signIn(.google) }) { GoogleButton() }
+                        .buttonStyle(.plain)
+                        .padding(.top, 10)
+                }
+                if model.service.microsoftClient != nil {
+                    Button(action: { model.signIn(.microsoft) }) { MicrosoftButton() }
+                        .buttonStyle(.plain)
+                        .padding(.top, hasClient ? 0 : 10)
+                }
+                Text("Waiting for \(model.signingIn == .microsoft ? "Microsoft" : "Google")…").font(.system(size: Theme.pt(13))).foregroundStyle(Theme.faint).opacity(model.signingIn != nil ? 1 : 0)
             } else {
                 #if os(iOS)
                 let missing = "This build has no Google sign-in key for an iPhone. Add an iOS client's OAuthClient.json as the README describes, then build again."

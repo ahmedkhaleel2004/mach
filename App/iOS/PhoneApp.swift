@@ -129,7 +129,12 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
             }
         }
         // With a relay the banner comes from the push itself; without one the app announces what it finds.
-        if PushRelay.current == nil { model.service.onNewMail = { notifier.announce($0) } }
+        // The relay only watches Gmail, so Outlook's mail is always announced from here.
+        let relayed = PushRelay.current != nil
+        let service = model.service
+        model.service.onNewMail = { messages in
+            notifier.announce(relayed ? messages.filter { service.provider(of: $0.accountId) != .google } : messages)
+        }
         self.notifier = notifier
         // Short of memory: let go of what can be read again from disk. (The database lets go of its own caches
         // by itself, and the system empties the web view's.)
@@ -264,7 +269,7 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
                 session.presentationContextProvider = self
                 session.prefersEphemeralWebBrowserSession = false
                 self.session = session
-                if !session.start() { answer.give(.failure(AuthError.failed("Could not open Google sign-in."))) }
+                if !session.start() { answer.give(.failure(AuthError.failed("Could not open the sign-in page."))) }
             }
         } onCancel: {
             Task { @MainActor in answer.give(.failure(CancellationError())) }
@@ -462,7 +467,8 @@ struct SwipeRow: View, Equatable {
             if offset != 0, action != .none {
                 backdrop(offset: offset, action: action, armed: armed, style: style)
             }
-            CompactRow(thread: thread, isSelected: isSelected, showSnooze: showSnooze, tag: tag, day: day, avatars: avatars, hasDraft: hasDraft, style: style)
+            CompactRow(thread: thread, isSelected: isSelected, showSnooze: showSnooze, tag: tag, day: day, avatars: avatars, hasDraft: hasDraft, style: style,
+                       copyCode: { [weak model] in model?.copyCode(thread) })
                 .equatable()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(isSelected ? Theme.selection : Theme.background)

@@ -13,7 +13,13 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate, @unchecked Sen
         self.isFrontmost = isFrontmost
         super.init()
         center.delegate = self
+        // A banner for a mail that carries a sign-in code has a button that copies it.
+        let copy = UNNotificationAction(identifier: Self.copyAction, title: "Copy Code", options: [])
+        center.setNotificationCategories([UNNotificationCategory(identifier: Self.codeCategory, actions: [copy], intentIdentifiers: [])])
     }
+
+    static let codeCategory = "code"
+    static let copyAction = "copy-code"
 
     func askPermission() {
         if Bootstrap.offline { return }
@@ -38,6 +44,11 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate, @unchecked Sen
             content.sound = .default
             content.threadIdentifier = message.accountId + "/" + message.threadId
             content.userInfo = ["account": message.accountId, "thread": message.threadId]
+            if let code = message.code ?? OneTimeCode.find(subject: message.subject, text: message.snippet) {
+                content.body = "Code \(code)  ·  " + message.snippet
+                content.categoryIdentifier = Self.codeCategory
+                content.userInfo["code"] = code
+            }
             if AvatarStore.enabled, let picture = await AvatarStore.shared.data(for: message.from.email) {
                 // The system moves the file it is given, so hand it a copy.
                 let copy = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).png")
@@ -57,6 +68,10 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate, @unchecked Sen
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
         let info = response.notification.request.content.userInfo
+        if response.actionIdentifier == Self.copyAction {
+            if let code = info["code"] as? String { await MainActor.run { Clipboard.copy(code) } }
+            return
+        }
         guard let account = info["account"] as? String, let thread = info["thread"] as? String else { return }
         await open(account, thread)
     }

@@ -597,7 +597,8 @@ private struct ThreadListRow: View {
     let today: Int
 
     var body: some View {
-        WideRow(thread: thread, isCursor: model.cursorId == thread.id, isSelected: model.selected.contains(thread.id), showSnooze: showSnooze, tag: tag, today: today, hasDraft: model.hasDraft(thread))
+        WideRow(thread: thread, isCursor: model.cursorId == thread.id, isSelected: model.selected.contains(thread.id), showSnooze: showSnooze, tag: tag, today: today, hasDraft: model.hasDraft(thread),
+                copyCode: { [weak model] in model?.copyCode(thread) })
             .equatable()
     }
 }

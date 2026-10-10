@@ -12,15 +12,15 @@ final class NotificationService: UNNotificationServiceExtension {
 
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
         handler = contentHandler
-        fallback = request.content
-        let info = request.content.userInfo
+        let content = Self.withCode(request.content)
+        fallback = content
+        let info = content.userInfo
         guard info["avatars"] as? Bool ?? true, let email = info["senderEmail"] as? String, !email.isEmpty else {
-            contentHandler(request.content)
+            contentHandler(content)
             return
         }
         let name = (info["senderName"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? email
         let thread = (info["thread"] as? String) ?? email
-        let content = request.content
         // The relay sends the sender's Google profile picture when your contacts have one: a real face.
         let photo = (info["senderPhoto"] as? String).flatMap(URL.init(string:))
         work = Task { [weak self] in
@@ -45,6 +45,17 @@ final class NotificationService: UNNotificationServiceExtension {
             let updated = (try? content.updating(from: intent)) ?? content
             self.finish(updated)
         }
+    }
+
+    /// A push for a mail that carries a sign-in code gets the code up front and the button that copies it
+    /// (the app answers the button: `Notifier`).
+    private static func withCode(_ content: UNNotificationContent) -> UNNotificationContent {
+        guard let code = OneTimeCode.find(subject: content.subtitle, text: content.body),
+              let changed = content.mutableCopy() as? UNMutableNotificationContent else { return content }
+        changed.body = "Code \(code)  ·  " + content.body
+        changed.categoryIdentifier = "code"
+        changed.userInfo["code"] = code
+        return changed
     }
 
     /// The longest a banner waits for the sender's picture before it shows with their initials instead. On a working

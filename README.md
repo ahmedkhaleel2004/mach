@@ -5,7 +5,7 @@
 <h1 align="center">Mach</h1>
 
 <p align="center">
-  The instant mail app for Gmail. Free for personal use, source open, native on Mac and iPhone.
+  The instant mail app for Gmail and Outlook. Free for personal use, source open, native on Mac and iPhone.
 </p>
 
 <p align="center">
@@ -44,6 +44,7 @@ Medians on a mailbox of 50,000 messages. Every number has a benchmark behind it 
 - **Keyboard first on Mac.** Gmail's own shortcuts, a command bar on `⌘K`, and nothing that needs the mouse.
 - **Swipes on iPhone.** Left to archive, right to mark read, both changeable; one swipe, no confirm. Swipe anywhere on an
   open email to go back. Everything follows your finger at 120 Hz and ticks when it takes.
+- **Sign-in codes, one tap.** A mail that carries a code shows it in its row and on its banner; tap it (or `⇧C`) and it is copied.
 - **Undo everything.** Archive, trash, snooze, and sending for five seconds.
 - **Real faces.** The sender's Google picture, or a company's certified logo, the way Gmail shows them. Tap to enlarge.
 - **Attachments you can see.** A preview on every file; a tap opens it in Quick Look.
@@ -65,6 +66,14 @@ after a paid security review, which Mach has not been through yet.
 1. In the [Google Cloud console](https://console.cloud.google.com) create a project, enable the **Gmail API** and the
    **People API**, and create an OAuth client of type **Desktop app**. Add yourself as a test user.
 2. Save the client's JSON as `~/Library/Application Support/Mach/OAuthClient.json` and open Mach.
+
+**Outlook** (outlook.com, hotmail.com, live.com, and work or school accounts) signs in through a Microsoft app
+registration instead. Its id is not a secret. Until Mach ships with one of its own, register an app at
+[entra.microsoft.com](https://entra.microsoft.com) (accounts in any organization and personal accounts; a
+"Mobile and desktop" redirect of `http://localhost`, and `com.ahmedkhaleel.mach://oauth` for the iPhone) and save
+`{"client_id": "<its id>"}` as `~/Library/Application Support/Mach/MicrosoftClient.json`
+(`App/Resources/MicrosoftClient.json` when building the iPhone app). Outlook mail is checked by the app itself:
+the push relay only watches Gmail, so an iPhone hears of new Outlook mail when Mach is open or refreshed in the background.
 
 ### iPhone
 
