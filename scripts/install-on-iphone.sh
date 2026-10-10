@@ -11,8 +11,13 @@ cd "$(dirname "$0")/../App"
 # a Desktop client in the file, accounts already signed in keep working but no new one can be added.
 MAIN="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/App/Resources"
 for key in OAuthClient.json PushRelay.json; do
-  [[ -e "Resources/$key" || ! -e "$MAIN/$key" ]] || cp "$MAIN/$key" Resources/
+  # The benchmark build leaves a dummy key behind (bench/build.sh): that one is replaced too, never shipped.
+  if [[ -e "$MAIN/$key" ]] && { [[ ! -e "Resources/$key" ]] || grep -q 'bench.invalid' "Resources/$key"; }; then cp "$MAIN/$key" Resources/; fi
 done
+if grep -q 'bench.invalid' Resources/OAuthClient.json 2>/dev/null; then
+  echo "App/Resources/OAuthClient.json is the benchmark's dummy key: this build could not sign in. Put the real one there." >&2
+  exit 1
+fi
 
 command -v xcodegen >/dev/null || brew install xcodegen
 xcodegen generate --quiet

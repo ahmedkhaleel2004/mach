@@ -795,13 +795,13 @@ private struct DoneButton: View {
                         pressed = true
                         Haptics.prepare()
                         hold = Task {
-                            try? await Task.sleep(for: .milliseconds(300))
+                            try? await Task.sleep(for: .milliseconds(250))
                             guard !Task.isCancelled, pressed, !strayed else { return }
                             liftedAt = finger
                             withAnimation(.spring(duration: 0.25, bounce: 0.3)) { lifted = true }
                             Haptics.select()
                         }
-                    } else if !lifted, hypot(finger.width, finger.height) > 10 {
+                    } else if !lifted, hypot(finger.width, finger.height) > 18 {
                         strayed = true
                         pressed = false
                         hold?.cancel()
