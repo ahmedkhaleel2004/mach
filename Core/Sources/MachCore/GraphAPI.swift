@@ -305,7 +305,10 @@ final class GraphBackend: MailBackend, @unchecked Sendable {
     private var folders: GraphFolders?
     private var loadingFolders: Task<GraphFolders, Error>?
     /// Messages that came with a list, kept until they are asked for one by one.
-    private var cache: [String: Message] = [:]
+    private var cache: [String: (message: Message, at: Date)] = [:]
+    /// How long a message that came with a list may stand in for asking again. Long enough for the download that
+    /// follows the list; anything older could describe a message that has since changed or gone.
+    private static let cacheLife: TimeInterval = 20
 
     static let labelPrefix = "Label_"
     /// Everything a message needs to be shown.
@@ -382,9 +385,12 @@ final class GraphBackend: MailBackend, @unchecked Sendable {
     /// The labels a message carries, worked out from where Outlook keeps it and how it is marked.
     static func labels(for message: MSMessage, folders: GraphFolders) -> [String] {
         var labels: [String] = []
-        let folderLabel = message.parentFolderId.flatMap { folders.label(forFolder: $0) }
+        // Mail in the outbox is on its way out: it counts as sent, as it will be a moment later.
+        let leaving = message.parentFolderId != nil && message.parentFolderId == folders.id("outbox")
+        let folderLabel = leaving ? SystemLabel.sent : message.parentFolderId.flatMap { folders.label(forFolder: $0) }
         if let folderLabel { labels.append(folderLabel) }
-        let isDraft = message.isDraft == true
+        // Outlook can go on calling a message a draft for a moment after it has gone. In Sent it is not one.
+        let isDraft = message.isDraft == true && folderLabel != SystemLabel.sent
         if isDraft, !labels.contains(SystemLabel.draft) { labels.append(SystemLabel.draft) }
         if message.isRead == false, !isDraft { labels.append(SystemLabel.unread) }
         if message.flag?.flagStatus == "flagged" { labels.append(SystemLabel.starred) }
@@ -421,8 +427,9 @@ final class GraphBackend: MailBackend, @unchecked Sendable {
 
     private func remember(_ messages: [Message]) {
         lock.withLock {
-            if cache.count > 600 { cache.removeAll() }
-            for message in messages { cache[message.id] = message }
+            let now = Date()
+            if cache.count > 600 { cache = cache.filter { now.timeIntervalSince($0.value.at) < Self.cacheLife } }
+            for message in messages { cache[message.id] = (message, now) }
         }
     }
 
@@ -492,7 +499,7 @@ final class GraphBackend: MailBackend, @unchecked Sendable {
     }
 
     func message(_ id: String, background: Bool) async throws -> Message {
-        if let cached = lock.withLock({ cache.removeValue(forKey: id) }) { return cached }
+        if let cached = lock.withLock({ cache.removeValue(forKey: id) }), Date().timeIntervalSince(cached.at) < Self.cacheLife { return cached.message }
         let found = try await api.get(MSMessage.self, GraphAPI.url("/me/messages/\(GraphAPI.segment(id))", fullQuery([])), background: background)
         guard let record = try await records([found]).first else {
             throw GmailError(status: 404, reason: "deleted", message: "The message was deleted.", service: "Outlook")
@@ -662,7 +669,8 @@ final class GraphBackend: MailBackend, @unchecked Sendable {
         return steps
     }
 
-    func modifyThread(_ id: String, add: [String], remove: [String]) async throws {
+    @discardableResult
+    func modifyThread(_ id: String, add: [String], remove: [String]) async throws -> [String]? {
         var found: [MSMessage] = []
         var next: URL? = GraphAPI.url("/me/messages", [("$filter", "conversationId eq \(Self.quoted(id))"), ("$select", Self.lightSelect), ("$top", "100")])
         while let url = next {
@@ -685,11 +693,12 @@ final class GraphBackend: MailBackend, @unchecked Sendable {
                         if let read = step.patch["isRead"] { patch["isRead"] = read == "true" }
                         if let flag = step.patch["flag"] { patch["flag"] = ["flagStatus": flag] }
                         if let categories = step.categories { patch["categories"] = categories }
-                        if !patch.isEmpty {
-                            _ = try await api.send("PATCH", GraphAPI.url(address), body: try JSONSerialization.data(withJSONObject: patch))
-                        }
+                        // Moved first, marked after: a mark made a moment before a move can be lost with the old copy.
                         if let destination = step.destination {
                             _ = try await api.send("POST", GraphAPI.url(address + "/move"), body: try JSONSerialization.data(withJSONObject: ["destinationId": destination]))
+                        }
+                        if !patch.isEmpty {
+                            _ = try await api.send("PATCH", GraphAPI.url(address), body: try JSONSerialization.data(withJSONObject: patch))
                         }
                     } catch let error as GmailError where error.isNotFound {
                         // Deleted elsewhere a moment ago: nothing left to change.
@@ -698,6 +707,7 @@ final class GraphBackend: MailBackend, @unchecked Sendable {
             }
             try await group.waitForAll()
         }
+        return steps.map(\.id)
     }
 
     func batchModify(messageIds: [String], add: [String], remove: [String]) async throws {
@@ -710,6 +720,18 @@ final class GraphBackend: MailBackend, @unchecked Sendable {
     }
 
     // MARK: Drafts and sending
+
+    func draftMessageIds() async throws -> Set<String>? {
+        guard let drafts = try await knownFolders().id("drafts") else { return nil }
+        var ids = Set<String>()
+        var next: URL? = GraphAPI.url("/me/mailFolders/\(GraphAPI.segment(drafts))/messages", [("$select", "id"), ("$top", "500")])
+        while let url = next {
+            let page = try await api.get(MSPage<MSMessage>.self, url, background: true)
+            for message in page.value { ids.insert(message.id) }
+            next = page.nextLink.flatMap(URL.init(string:))
+        }
+        return ids
+    }
 
     func draftId(forMessage messageId: String) async throws -> String? {
         do {
@@ -727,7 +749,9 @@ final class GraphBackend: MailBackend, @unchecked Sendable {
     func deleteDraft(id: String) async throws {
         do {
             _ = try await api.send("DELETE", GraphAPI.url("/me/messages/\(GraphAPI.segment(id))"))
-        } catch let error as GmailError where error.isNotFound {}
+        } catch let error as GmailError where error.isNotFound || error.reason == "ErrorCannotDeleteObject" {
+            // Already deleted: Outlook keeps deleted mail out of sight for a while and will not delete it twice.
+        }
     }
 
     /// Outlook takes a whole message as text only when making a new draft, so saving over a draft makes the new

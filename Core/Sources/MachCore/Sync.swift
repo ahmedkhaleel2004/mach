@@ -34,10 +34,12 @@ public actor AccountSync {
     private let backfillTarget = 1500
     private let inboxLimit = 5000
 
-    /// Changes sent to the service a moment ago: (thread, what was added and removed, when it finished). A report
+    /// Changes sent to the service a moment ago: (the messages touched, what was added and removed, when it finished). A report
     /// that was already on its way when one of these landed describes the mailbox as it was before, so they are
     /// laid over it again. Only kept for a service that reports whole label lists.
-    private var recentChanges: [(threadId: String, add: [String], remove: [String], at: Date)] = []
+    private var recentChanges: [(messages: Set<String>, add: [String], remove: [String], at: Date)] = []
+    /// When a draft was last saved, sent or removed from here, if the drafts have not been checked since.
+    private var draftsTouched: Date?
     /// Labels already recorded for a service that has no list of them.
     private var learnedLabels = Set<String>()
 
@@ -93,6 +95,7 @@ public actor AccountSync {
                 return
             }
         } while syncAgain
+        await sweepDrafts()
         dropSupersededDrafts()
         await saveDrafts()
         Task { await self.backfill() }
@@ -183,16 +186,18 @@ public actor AccountSync {
         let added = report.added
         // A change sent from here while the report was on its way is not in it yet: lay it over what the report says.
         recentChanges.removeAll { Date().timeIntervalSince($0.at) > 120 }
-        let overlaid = recentChanges.filter { $0.at >= asked }
+        // Outlook's change lists also run a few seconds behind the mailbox, so a change that landed just before the
+        // report was asked for may be missing from it too.
+        let overlaid = recentChanges.filter { $0.at >= asked.addingTimeInterval(-8) }
         if !overlaid.isEmpty {
             for index in changes.indices {
-                guard let replace = changes[index].replace, let threadId = changes[index].threadId else { continue }
+                guard let replace = changes[index].replace else { continue }
                 var labels = replace
-                for change in overlaid where change.threadId == threadId { labels = Store.apply(add: change.add, remove: change.remove, to: labels) }
+                for change in overlaid where change.messages.contains(changes[index].messageId) { labels = Store.apply(add: change.add, remove: change.remove, to: labels) }
                 changes[index].replace = labels
             }
             // The mailbox has moved on since this report was asked for; the next one says where it ended up.
-            syncAgain = true
+            if overlaid.contains(where: { $0.at >= asked }) { syncAgain = true }
         }
         // A label this device has never heard of (a snooze made elsewhere, a new label): learn the names first.
         if api.derivesLabels {
@@ -493,6 +498,7 @@ public actor AccountSync {
             if op.kind == PendingOp.send {
                 try await runSend(op)
             } else if op.kind == PendingOp.sendGmailDraft || op.kind == PendingOp.deleteGmailDraft {
+                draftsTouched = Date()
                 if let messageId = op.draftId, let draftId = try await api.draftId(forMessage: messageId) {
                     if op.kind == PendingOp.sendGmailDraft {
                         // Marked first: from here Undo is refused, and a draft that is gone on retry was sent.
@@ -509,8 +515,9 @@ public actor AccountSync {
             } else {
                 let add = try await resolve(op.addLabels)
                 let remove = try await resolve(op.removeLabels)
-                if !add.isEmpty || !remove.isEmpty { try await api.modifyThread(op.threadId, add: add, remove: remove) }
-                if api.derivesLabels { recentChanges.append((op.threadId, add, remove, Date())) }
+                if !add.isEmpty || !remove.isEmpty, let touched = try await api.modifyThread(op.threadId, add: add, remove: remove), !touched.isEmpty {
+                    recentChanges.append((Set(touched), add, remove, Date()))
+                }
                 try store.deleteOp(opId)
             }
             return true
@@ -543,6 +550,8 @@ public actor AccountSync {
     private struct SendError: Error { let message: String }
 
     private func runSend(_ op: PendingOp) async throws {
+        draftsTouched = Date()
+        defer { draftsTouched = Date() }
         guard let draftId = op.draftId, let draft = try store.draft(draftId) else {
             if let id = op.id { try store.deleteOp(id) }
             return
@@ -617,6 +626,8 @@ public actor AccountSync {
     }
 
     private func save(_ draft: Draft) async throws {
+        draftsTouched = Date()
+        defer { draftsTouched = Date() }
         let raw = try outgoing(draft, forSending: false).rfc822()
         var remote = draft.remoteDraftId
         var replaced = draft.remoteMessageId
@@ -641,9 +652,41 @@ public actor AccountSync {
             // Sent or thrown away while this was on its way up.
             try? await api.deleteDraft(id: saved.id)
             try? store.removeMessage(account: accountId, id: messageId)
+            // The copy this save replaced is gone from the service too, and nothing else will say so.
+            if let replaced, replaced != messageId { try? store.removeMessage(account: accountId, id: replaced) }
             return
         }
         if let replaced, replaced != messageId { try? store.removeMessage(account: accountId, id: replaced) }
+    }
+
+    /// Outlook's change list says nothing about a draft that was made and removed between two looks at it, which
+    /// is what saving over a draft and sending do. So after drafts were touched from here, the ones kept on this
+    /// device are compared with the ones Outlook holds, and each that is missing there is looked at and dropped.
+    private func sweepDrafts() async {
+        guard let touched = draftsTouched, Date().timeIntervalSince(touched) > 3, !stopped else { return }
+        do {
+            guard let held = try await api.draftMessageIds() else {
+                draftsTouched = nil
+                return
+            }
+            let here = try store.messageIds(account: accountId, withLabel: SystemLabel.draft).map(\.id)
+            var deleted: [String] = []
+            for id in here where !held.contains(id) {
+                do {
+                    // Still somewhere (sent, most likely): its labels are brought up to date.
+                    try keep([try await api.message(id, background: true)])
+                } catch let error as GmailError where error.isNotFound {
+                    deleted.append(id)
+                }
+            }
+            if !deleted.isEmpty {
+                mailWrites += 1
+                _ = try store.applyLabelChanges(account: accountId, changes: [], deleted: deleted)
+            }
+            if draftsTouched == touched { draftsTouched = nil }
+        } catch {
+            // Offline or refused: looked at again after the next sync.
+        }
     }
 
     /// A draft whose copy on Gmail is no longer there was sent, discarded or rewritten on another device.

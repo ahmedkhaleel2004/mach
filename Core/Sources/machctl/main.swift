@@ -100,7 +100,7 @@ if outlook, ProcessInfo.processInfo.environment["MACH_SELFTEST"] != nil {
     }
     func thread() throws -> MailThread? {
         for label in [SystemLabel.all, SystemLabel.trash, SystemLabel.spam] {
-            if let found = try service.store.threads(account: me, label: label, limit: 100_000).first(where: { $0.subject.hasSuffix(subject) }) { return found }
+            if let found = try service.store.threads(account: me, label: label, limit: 100_000).first(where: { $0.subject.hasSuffix(subject) && $0.labelIds != [SystemLabel.draft] }) { return found }
         }
         return nil
     }
@@ -157,7 +157,16 @@ if outlook, ProcessInfo.processInfo.environment["MACH_SELFTEST"] != nil {
         service.modify(account: me, threadIds: [arrived.id], add: add, remove: remove, snoozeUntil: snoozeUntil, clearSnooze: clearSnooze)
         try await Task.sleep(nanoseconds: 300_000_000)
         await settle()
-        let now = try thread()
+        var now = try thread()
+        var waited = 0
+        // Outlook's change lists run a little behind the mailbox; what matters is where things come to rest.
+        while !(now.map(expect) ?? false), waited < 8 {
+            waited += 1
+            try await Task.sleep(nanoseconds: 1_500_000_000)
+            await sync.sync()
+            now = try thread()
+        }
+        if waited > 0 { print("     (\(name) took \(waited) more looks)") }
         let pending = try service.store.pendingOpCount()
         check(name, now.map(expect) ?? false, "labels \(now?.labelIds ?? []) snoozed \(now?.snoozedUntil.map(String.init) ?? "no") pending \(pending)")
     }
@@ -199,6 +208,15 @@ if outlook, ProcessInfo.processInfo.environment["MACH_SELFTEST"] != nil {
     let mine = try service.store.messages(account: me, threadId: arrived.id).map { $0.id + " " + $0.labelIds.sorted().joined(separator: ",") }.sorted()
     let theirs = try second.store.messages(account: me, threadId: arrived.id).map { $0.id + " " + $0.labelIds.sorted().joined(separator: ",") }.sorted()
     check("a fresh device sees the same thing", mine == theirs && !mine.isEmpty, "\(mine.count) vs \(theirs.count)")
+    if mine != theirs { print(mine.map { String($0.suffix(60)) }, theirs.map { String($0.suffix(60)) }) }
+    await sync.sync()
+    let early = try service.store.threads(account: me, label: SystemLabel.draft, limit: 100_000).filter { $0.subject.hasSuffix(subject) }.count
+    if early > 0 { print("     (\(early) stale draft before the drafts check)") }
+    let ghosts = try service.store.threads(account: me, label: SystemLabel.draft, limit: 100_000).filter { $0.subject.hasSuffix(subject) }
+    check("no draft of it lingers", ghosts.isEmpty, "\(ghosts.count)")
+    for ghost in ghosts {
+        for message in try service.store.messages(account: me, threadId: ghost.id) { print("     ghost \(message.labelIds.map { String($0.prefix(14)) }) \(message.id.suffix(8)) same thread: \(ghost.id == arrived.id)") }
+    }
     print(failures == 0 ? "SELFTEST PASSED" : "SELFTEST FAILED: \(failures)")
     exit(failures == 0 ? 0 : 1)
 }

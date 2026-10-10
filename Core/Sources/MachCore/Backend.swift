@@ -67,10 +67,15 @@ protocol MailBackend: Sendable {
     func changes(since cursor: String) async throws -> RemoteChanges
     func attachment(messageId: String, attachmentId: String) async throws -> Data
 
-    func modifyThread(_ id: String, add: [String], remove: [String]) async throws
+    /// Returns the messages the change touched, when the service reports whole label lists (see `AccountSync`).
+    @discardableResult
+    func modifyThread(_ id: String, add: [String], remove: [String]) async throws -> [String]?
     func batchModify(messageIds: [String], add: [String], remove: [String]) async throws
     func createLabel(name: String) async throws -> RemoteLabel
 
+    /// The ids of every draft the service holds, for a service whose change list can miss a draft that was made
+    /// and removed in one breath. Nil when the change list is enough.
+    func draftMessageIds() async throws -> Set<String>?
     func draftId(forMessage messageId: String) async throws -> String?
     func sendDraft(id: String) async throws
     func deleteDraft(id: String) async throws
@@ -141,8 +146,9 @@ struct GmailBackend: MailBackend {
         try await api.attachment(messageId: messageId, attachmentId: attachmentId)
     }
 
-    func modifyThread(_ id: String, add: [String], remove: [String]) async throws {
+    func modifyThread(_ id: String, add: [String], remove: [String]) async throws -> [String]? {
         try await api.modifyThread(id, add: add, remove: remove)
+        return nil
     }
 
     func batchModify(messageIds: [String], add: [String], remove: [String]) async throws {
@@ -153,6 +159,8 @@ struct GmailBackend: MailBackend {
         let created = try await api.createLabel(name: name)
         return RemoteLabel(id: created.id, name: created.name, type: "user")
     }
+
+    func draftMessageIds() async throws -> Set<String>? { nil }
 
     func draftId(forMessage messageId: String) async throws -> String? { try await api.draftId(forMessage: messageId) }
 
