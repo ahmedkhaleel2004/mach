@@ -113,6 +113,11 @@ public final class MailService: @unchecked Sendable {
     public var onReport: (@Sendable (String, String) -> Void)?
     /// Called when new mail that deserves a notification has arrived.
     public var onNewMail: (@Sendable ([Message]) -> Void)?
+    /// Called with the account when a pass over Gmail's changes has finished without an error.
+    public var onSynced: (@Sendable (String) -> Void)?
+    private var syncedFrom: [String: Date] = [:]
+    /// When the last pass that finished began: everything stored for the account is at least that fresh.
+    public func syncedFrom(account: String) -> Date? { lock.withLock { syncedFrom[account] } }
     /// See `Store.announceBulk`.
     public var announceBulk: Bool {
         get { store.announceBulk }
@@ -143,6 +148,12 @@ public final class MailService: @unchecked Sendable {
                 self?.onReport?(account, message)
             }, arrived: { [weak self] messages in
                 self?.onNewMail?(messages)
+            }, synced: { [weak self] began in
+                guard let self else { return }
+                self.lock.withLock { self.syncedFrom[account] = began }
+                // Who the account knows, so a new message can be addressed to them. Asked of Google once a day.
+                if self.transport == nil, provider == .google { Task { await self.peopleDirectory(account).refresh() } }
+                self.onSynced?(account)
             })
             syncs[account] = created
             return created
@@ -171,16 +182,21 @@ public final class MailService: @unchecked Sendable {
         let accounts = ((try? store.accounts()) ?? []).filter { $0.service == .google }.map(\.id)
         let ordered = accounts.filter { $0 == email.lowercased() } + accounts.filter { $0 != email.lowercased() }
         for account in ordered {
-            let directory: PeopleDirectory = lock.withLock {
-                if let existing = people[account] { return existing }
-                let auth = authenticator(account, provider: .google)
-                let created = PeopleDirectory(account: account, auth: auth, directory: self.directory)
-                people[account] = created
-                return created
-            }
-            if let url = await directory.photoURL(for: email) { return url }
+            if let url = await peopleDirectory(account).photoURL(for: email) { return url }
         }
         return nil
+    }
+
+    private func peopleDirectory(_ account: String) -> PeopleDirectory {
+        lock.withLock {
+            if let existing = people[account] { return existing }
+            let auth = authenticator(account, provider: .google)
+            let created = PeopleDirectory(account: account, auth: auth, directory: self.directory) { [weak self] known in
+                try? self?.store.saveKnownPeople(account: account, people: known)
+            }
+            people[account] = created
+            return created
+        }
     }
 
     // MARK: Accounts

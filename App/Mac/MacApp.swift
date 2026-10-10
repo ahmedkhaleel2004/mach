@@ -117,6 +117,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }, isFrontmost: { NSApp.isActive })
         notifier.askPermission()
         model.service.onNewMail = { notifier.announce($0) }
+        notifier.follow(model.service)
         self.notifier = notifier
         // Mail can only be announced while the app is running, so it starts with the Mac (once; it can be
         // switched off in the app's settings or in System Settings > General > Login Items and stays off).

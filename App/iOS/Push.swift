@@ -8,6 +8,7 @@ final class PhoneDelegate: NSObject, UIApplicationDelegate {
         set { UserDefaults.standard.set(newValue, forKey: "pushToken") }
     }
     static weak var service: MailService?
+    static var tidy: (() async -> Void)?
 
     // The App Store build has no relay to push to it, so it never asks Apple for a push address.
     #if !STORE
@@ -20,7 +21,8 @@ final class PhoneDelegate: NSObject, UIApplicationDelegate {
         NSLog("push registration failed: %@", String(describing: error))
     }
 
-    /// A push also wakes the app briefly, so the new mail is already there when the banner is tapped.
+    /// A push also wakes the app briefly, so the new mail is already there when the banner is tapped, and the
+    /// banners of mail dealt with on another device are gone before the phone is picked up.
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any]) async -> UIBackgroundFetchResult {
         guard let service = Self.service else { return .noData }
         #if DEBUG || BENCH
@@ -28,6 +30,7 @@ final class PhoneDelegate: NSObject, UIApplicationDelegate {
         defer { Bench.record("push.silent", ms: Bench.now() - start.0, ["cpu": LaunchBench.cpu() - start.1, "sinceStart": Bench.sinceProcessStart()]) }
         #endif
         await service.syncAll()
+        await Self.tidy?()
         return .newData
     }
     #endif

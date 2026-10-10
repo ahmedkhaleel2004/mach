@@ -1442,7 +1442,8 @@
     },
     "body": {
      "aps": {
-      "badge": 0
+      "badge": 0,
+      "content-available": 1
      }
     }
    },

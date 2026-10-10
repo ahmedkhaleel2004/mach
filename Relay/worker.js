@@ -474,9 +474,10 @@ async function check(env, email, kept, notified) {
     sent++;
   }
   if (unread !== null) {
-    // Nothing new to announce, but the count moved: the icon alone is corrected, silently.
+    // Nothing new to announce, but the count moved: mail was read or archived somewhere else. The icon is
+    // corrected, silently, and the app is woken for a moment to take down the banners of that mail.
     if (!sent && before?.unread !== unread) {
-      const reached = await Promise.all(devices.map((device) => push(env, device, { aps: badged(device) }, "badge", kept)));
+      const reached = await Promise.all(devices.map((device) => push(env, device, { aps: { ...badged(device), "content-available": 1 } }, "badge", kept)));
       devices = devices.filter((_, position) => reached[position]);
     }
     all[email].tokens = devices.map((device) => device.token);

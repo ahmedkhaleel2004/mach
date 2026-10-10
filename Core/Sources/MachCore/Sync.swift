@@ -11,6 +11,7 @@ public actor AccountSync {
     private let store: Store
     private let report: @Sendable (String, String) -> Void
     private let arrived: @Sendable ([Message]) -> Void
+    private let synced: @Sendable (Date) -> Void
 
     private var syncTask: Task<Void, Never>?
     private var syncAgain = false
@@ -41,7 +42,8 @@ public actor AccountSync {
     private var learnedLabels = Set<String>()
 
     init(accountId: String, api: MailBackend, store: Store, offline: Bool = false, report: @escaping @Sendable (String, String) -> Void,
-         arrived: @escaping @Sendable ([Message]) -> Void) {
+         arrived: @escaping @Sendable ([Message]) -> Void, synced: @escaping @Sendable (Date) -> Void = { _ in }) {
+        self.synced = synced
         self.offline = offline
         self.accountId = accountId
         self.api = api
@@ -72,6 +74,7 @@ public actor AccountSync {
         repeat {
             syncAgain = false
             await flush()
+            let began = Date()
             do {
                 try await wakeSnoozed()
                 if let historyId = try store.account(accountId)?.historyId {
@@ -81,6 +84,8 @@ public actor AccountSync {
                     // Outlook's first look at the change lists is what tells it how every message is filed.
                     if api.derivesLabels { syncAgain = true }
                 }
+                // What is stored now is Gmail as it stood at `began` or later.
+                synced(began)
             } catch is CancellationError {
                 return
             } catch {

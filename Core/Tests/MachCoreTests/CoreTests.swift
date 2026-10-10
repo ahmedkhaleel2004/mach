@@ -169,6 +169,25 @@ final class StoreTests: XCTestCase {
         XCTAssertEqual(try store.contacts(account: me, matching: "bo").map(\.email), ["bob@y.com"])
     }
 
+    /// People in the account's Google contacts can be addressed before any mail has gone between you here, found
+    /// by the start of their address even when their name says nothing ("h k"). Real correspondents come first.
+    func testGoogleContactsAreOfferedAsRecipients() throws {
+        try store.saveMessages(account: me, messages: [message("a1", thread: "A", labels: ["INBOX"], from: "Hamid <hamid@y.com>", date: 10)])
+        try store.saveKnownPeople(account: me, people: [
+            KnownPerson(email: "hamster@other.com", name: "", saved: false),
+            KnownPerson(email: "hamzak123@hotmail.com", name: "h k", saved: true),
+            KnownPerson(email: "hamid@y.com", name: "Someone Else", saved: true),
+            KnownPerson(email: me, name: "Me", saved: true),
+        ])
+        XCTAssertEqual(try store.contacts(account: me, matching: "ham").map(\.email), ["hamid@y.com", "hamzak123@hotmail.com", "hamster@other.com"])
+        XCTAssertEqual(try store.contacts(account: me, matching: "hamza").map(\.name), ["h k"])
+        XCTAssertEqual(try store.contacts(account: me, matching: "hamid").map(\.name), ["Hamid"])
+        // Told again the next day: nothing doubles and nothing they earned from real mail is lost.
+        let before = try store.contacts(account: me, matching: "ham")
+        try store.saveKnownPeople(account: me, people: [KnownPerson(email: "hamid@y.com", name: "Someone Else", saved: true)])
+        XCTAssertEqual(try store.contacts(account: me, matching: "ham"), before)
+    }
+
     func testLocalChangeSurvivesStaleServerData() throws {
         try store.saveMessages(account: me, messages: [message("a1", thread: "A", labels: ["INBOX", "UNREAD"])])
         try store.modifyThreads(account: me, threadIds: ["A"], add: [], remove: ["INBOX", "UNREAD"])

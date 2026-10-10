@@ -135,6 +135,8 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
         model.service.onNewMail = { messages in
             notifier.announce(relayed ? messages.filter { service.provider(of: $0.accountId) != .google } : messages)
         }
+        notifier.follow(model.service)
+        PhoneDelegate.tidy = { await notifier.tidy() }
         self.notifier = notifier
         // Short of memory: let go of what can be read again from disk. (The database lets go of its own caches
         // by itself, and the system empties the web view's.)

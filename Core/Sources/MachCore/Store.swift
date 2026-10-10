@@ -875,6 +875,27 @@ public final class Store: @unchecked Sendable {
         return stream(observation.removeDuplicates())
     }
 
+    /// The conversations a new-mail banner can still be about: unread and in the inbox, as "account/thread".
+    public func waitingThreads() throws -> Set<String> {
+        try pool.read { try Self.waitingThreads($0) }
+    }
+
+    /// `waitingThreads`, again every time it changes.
+    public func observeWaitingThreads() -> AsyncStream<Set<String>> {
+        stream(ValueObservation.tracking { try Self.waitingThreads($0) }.removeDuplicates())
+    }
+
+    private static func waitingThreads(_ db: Database) throws -> Set<String> {
+        var waiting = Set<String>()
+        let rows = try Row.fetchCursor(db, sql: """
+            SELECT thread_label.accountId, thread_label.threadId FROM thread_label
+            JOIN thread ON thread.accountId = thread_label.accountId AND thread.id = thread_label.threadId
+            WHERE thread_label.labelId = 'INBOX' AND thread.unread = 1
+            """)
+        while let row = try rows.next() { waiting.insert((row[0] as String) + "/" + (row[1] as String)) }
+        return waiting
+    }
+
     private func stream<Reducer: ValueReducer>(_ observation: ValueObservation<Reducer>) -> AsyncStream<Reducer.Value> where Reducer.Value: Sendable {
         AsyncStream(bufferingPolicy: .bufferingNewest(1)) { continuation in
             let cancellable = observation.start(in: pool, scheduling: .async(onQueue: .global(qos: .userInitiated)), onError: { _ in
@@ -998,6 +1019,21 @@ public final class Store: @unchecked Sendable {
                                               arguments: StatementArguments([account] + ids))
             let byId = Dictionary(uniqueKeysWithValues: found.map { ($0.id, $0) })
             return ids.compactMap { byId[$0] }
+        }
+    }
+
+    /// Adds the account's Google contacts to the people a message can be addressed to. They count for nothing in
+    /// the ordering (`uses` 0), so anyone mail has really gone to or come from is still offered first; among
+    /// themselves, the ones saved by hand come before the ones Google kept by itself.
+    public func saveKnownPeople(account: String, people: [KnownPerson]) throws {
+        try pool.write { db in
+            guard try Self.accountExists(db, account) else { return }
+            for person in people where person.email != account {
+                try db.execute(sql: """
+                    INSERT INTO contact(accountId, email, name, uses, lastUsed) VALUES (?, ?, ?, 0, ?)
+                    ON CONFLICT(accountId, email) DO UPDATE SET name = CASE WHEN name = '' THEN excluded.name ELSE name END
+                    """, arguments: [account, person.email, person.name, person.saved ? 2 : 1])
+            }
         }
     }
 

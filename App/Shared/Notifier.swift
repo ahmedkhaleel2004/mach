@@ -26,6 +26,33 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate, @unchecked Sen
         center.requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
     }
 
+    /// Keeps the banners honest from here on: one for mail that has since been read, archived or deleted, on this
+    /// device or any other, is taken down, off the screen and out of the notification list.
+    func follow(_ service: MailService) {
+        if Bootstrap.offline { return }
+        lock.withLock { self.service = service }
+        service.onSynced = { [weak self] _ in Task { await self?.tidy() } }
+        Task { [weak self] in
+            for await _ in service.store.observeWaitingThreads() { await self?.tidy() }
+        }
+    }
+
+    private let lock = NSLock()
+    private var service: MailService?
+    private var ledger = BannerLedger()
+
+    func tidy() async {
+        guard let service = lock.withLock({ self.service }) else { return }
+        let banners: [Banner] = await center.deliveredNotifications().compactMap { shown in
+            let info = shown.request.content.userInfo
+            guard let account = info["account"] as? String, let thread = info["thread"] as? String else { return nil }
+            return Banner(id: shown.request.identifier, account: account, thread: thread, delivered: shown.date)
+        }
+        guard !banners.isEmpty, let waiting = try? service.store.waitingThreads() else { return }
+        let stale = lock.withLock { ledger.stale(banners, waiting: waiting, synced: service.syncedFrom) }
+        if !stale.isEmpty { center.removeDeliveredNotifications(withIdentifiers: stale) }
+    }
+
     func announce(_ messages: [Message]) {
         Task {
             for message in messages.suffix(5) { await announce(message) }
