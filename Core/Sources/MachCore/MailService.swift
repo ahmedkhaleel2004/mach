@@ -111,6 +111,11 @@ public final class MailService: @unchecked Sendable {
     public var onReport: (@Sendable (String, String) -> Void)?
     /// Called when new mail that deserves a notification has arrived.
     public var onNewMail: (@Sendable ([Message]) -> Void)?
+    /// Called with the account when a pass over Gmail's changes has finished without an error.
+    public var onSynced: (@Sendable (String) -> Void)?
+    private var syncedFrom: [String: Date] = [:]
+    /// When the last pass that finished began: everything stored for the account is at least that fresh.
+    public func syncedFrom(account: String) -> Date? { lock.withLock { syncedFrom[account] } }
     /// See `Store.announceBulk`.
     public var announceBulk: Bool {
         get { store.announceBulk }
@@ -137,6 +142,10 @@ public final class MailService: @unchecked Sendable {
                 self?.onReport?(account, message)
             }, arrived: { [weak self] messages in
                 self?.onNewMail?(messages)
+            }, synced: { [weak self] began in
+                guard let self else { return }
+                self.lock.withLock { self.syncedFrom[account] = began }
+                self.onSynced?(account)
             })
             syncs[account] = created
             return created

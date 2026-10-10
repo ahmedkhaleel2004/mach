@@ -794,6 +794,27 @@ public final class Store: @unchecked Sendable {
         return stream(observation.removeDuplicates())
     }
 
+    /// The conversations a new-mail banner can still be about: unread and in the inbox, as "account/thread".
+    public func waitingThreads() throws -> Set<String> {
+        try pool.read { try Self.waitingThreads($0) }
+    }
+
+    /// `waitingThreads`, again every time it changes.
+    public func observeWaitingThreads() -> AsyncStream<Set<String>> {
+        stream(ValueObservation.tracking { try Self.waitingThreads($0) }.removeDuplicates())
+    }
+
+    private static func waitingThreads(_ db: Database) throws -> Set<String> {
+        var waiting = Set<String>()
+        let rows = try Row.fetchCursor(db, sql: """
+            SELECT thread_label.accountId, thread_label.threadId FROM thread_label
+            JOIN thread ON thread.accountId = thread_label.accountId AND thread.id = thread_label.threadId
+            WHERE thread_label.labelId = 'INBOX' AND thread.unread = 1
+            """)
+        while let row = try rows.next() { waiting.insert((row[0] as String) + "/" + (row[1] as String)) }
+        return waiting
+    }
+
     private func stream<Reducer: ValueReducer>(_ observation: ValueObservation<Reducer>) -> AsyncStream<Reducer.Value> where Reducer.Value: Sendable {
         AsyncStream(bufferingPolicy: .bufferingNewest(1)) { continuation in
             let cancellable = observation.start(in: pool, scheduling: .async(onQueue: .global(qos: .userInitiated)), onError: { _ in

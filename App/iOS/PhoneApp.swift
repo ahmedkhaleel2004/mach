@@ -130,6 +130,8 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
         }
         // With a relay the banner comes from the push itself; without one the app announces what it finds.
         if PushRelay.current == nil { model.service.onNewMail = { notifier.announce($0) } }
+        notifier.follow(model.service)
+        PhoneDelegate.tidy = { await notifier.tidy() }
         self.notifier = notifier
         // Short of memory: let go of what can be read again from disk. (The database lets go of its own caches
         // by itself, and the system empties the web view's.)

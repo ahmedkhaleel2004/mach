@@ -28,7 +28,7 @@ test("a banner carries the unread total of every account on the phone", async ()
   expect(badges(world)).toEqual([["a", 1], ["b", 2], ["c", 3]]);
 });
 
-test("mail read somewhere else lowers the number, with no banner and no sound", async () => {
+test("mail read somewhere else lowers the number and wakes the app to clear its banner, with no banner and no sound", async () => {
   const world = await twoAccounts();
   world.deliver(ME, { id: "a" });
   await world.pubsub(ME);
@@ -40,7 +40,7 @@ test("mail read somewhere else lowers the number, with no banner and no sound", 
   box.historyId += 10;
   await world.pubsub(ME);
   const pushes = world.seen.filter((entry) => entry.kind === "apns");
-  expect(pushes.map((entry) => entry.body)).toEqual([{ aps: { badge: 1 } }]);
+  expect(pushes.map((entry) => entry.body)).toEqual([{ aps: { badge: 1, "content-available": 1 } }]);
   // Gmail saying the same thing again changes nothing.
   box.historyId += 10;
   await world.pubsub(ME);
