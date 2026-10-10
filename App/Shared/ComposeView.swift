@@ -454,11 +454,13 @@ struct ComposeView: View {
             .frame(height: Theme.pt(40))
             ForEach(Array(matches.prefix(6).enumerated()), id: \.element.email) { index, contact in
                 HStack(spacing: 8) {
+                    // The person's face, ending where the field's label does, so the names stay under what is typed.
+                    AvatarView(name: contact.name, email: contact.email, size: Theme.pt(22))
                     Text(contact.name.isEmpty ? contact.email : contact.name).font(.system(size: Theme.pt(14))).foregroundStyle(Theme.text).lineLimit(1)
                     if !contact.name.isEmpty { Text(contact.email).font(.system(size: Theme.pt(13))).foregroundStyle(Theme.faint).lineLimit(1) }
                     Spacer()
                 }
-                .padding(.leading, 66)
+                .padding(.leading, 66 - 8 - Theme.pt(22))
                 .frame(height: Theme.pt(32))
                 .background(index == suggestionIndex ? Theme.selection : Color.clear)
                 .contentShape(Rectangle())

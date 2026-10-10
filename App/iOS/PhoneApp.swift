@@ -155,7 +155,7 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
         // real mail listens to nothing.
         guard Bootstrap.offline else { return }
         let keys = ["j", "k", "e", "s", "u", "c", "r", "a", "f", "h", "z", "x", "o", "enter", "escape", "tab", "palette", "search", "send", "type",
-                    "demoLeft", "demoRight", "style1", "style2", "style3", "lists", "face", "details", "scrollDown", "fling", "themeNext", "settings", "bigface", "discard", "drafts", "discardCompose", "replyDetails", "typeLong", "back", "licenses"]
+                    "demoLeft", "demoRight", "style1", "style2", "style3", "lists", "face", "details", "scrollDown", "fling", "themeNext", "settings", "bigface", "discard", "drafts", "discardCompose", "replyDetails", "typeLong", "back", "licenses", "typeTo"]
         for key in keys {
             let name = "com.ahmedkhaleel.mach.key.\(key)" as CFString
             CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), nil, { _, _, name, _, _ in
@@ -178,6 +178,7 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
                 model.compose?.to = "someone@example.com"
                 model.compose?.subject = "Hello from Mach"
                 model.compose?.body = "First line.\n\nSecond paragraph with a link https://example.com"
+            case "typeTo": model.compose?.to = "br"
             case "typeLong": model.compose?.body = (1...14).map { "Line \($0) of a longer reply, to see it grow." }.joined(separator: "\n")
             case "replyDetails": model.replyDetailsRequest += 1
             case "back": model.closeThread()
