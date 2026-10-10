@@ -754,22 +754,18 @@ final class DoneSpot {
 }
 
 /// The Done button. A tap archives; held for a moment it lifts off the page and follows the finger, and stays where
-/// it is let go. Not a `Button`, which would also count the end of a drag as a tap.
+/// it is let go. The touches are read by the system's own tap and long-press recognizers (`DoneTouch`): a SwiftUI
+/// drag timed by hand worked in the simulator and missed half the holds of a real thumb.
 private struct DoneButton: View {
     let model: AppModel
     private let spot = DoneSpot.shared
-    @GestureState private var touching = false
     @State private var pressed = false
     @State private var lifted = false
-    /// The finger wandered off before the button lifted: neither a tap nor a drag.
-    @State private var strayed = false
     @State private var finger = CGSize.zero
-    @State private var liftedAt = CGSize.zero
-    @State private var hold: Task<Void, Never>?
 
     private var place: CGSize {
         guard lifted else { return spot.kept(spot.offset) }
-        return spot.kept(CGSize(width: spot.offset.width + finger.width - liftedAt.width, height: spot.offset.height + finger.height - liftedAt.height))
+        return spot.kept(CGSize(width: spot.offset.width + finger.width, height: spot.offset.height + finger.height))
     }
 
     var body: some View {
@@ -784,60 +780,89 @@ private struct DoneButton: View {
         .shadow(color: .black.opacity(lifted ? 0.35 : 0.25), radius: lifted ? 16 : 8, y: lifted ? 8 : 3)
         .opacity(pressed && !lifted ? 0.6 : 1)
         .scaleEffect(lifted ? 1.08 : 1)
-        .contentShape(Capsule())
-        .offset(place)
-        .gesture(
-            DragGesture(minimumDistance: 0, coordinateSpace: .named(DoneSpot.space))
-                .updating($touching) { _, state, _ in state = true }
-                .onChanged { value in
-                    finger = value.translation
-                    if !pressed, !strayed {
-                        pressed = true
-                        Haptics.prepare()
-                        hold = Task {
-                            try? await Task.sleep(for: .milliseconds(250))
-                            guard !Task.isCancelled, pressed, !strayed else { return }
-                            liftedAt = finger
-                            withAnimation(.spring(duration: 0.25, bounce: 0.3)) { lifted = true }
-                            Haptics.select()
-                        }
-                    } else if !lifted, hypot(finger.width, finger.height) > 18 {
-                        strayed = true
-                        pressed = false
-                        hold?.cancel()
+        .overlay {
+            DoneTouch(
+                press: { pressed = $0 },
+                tap: { model.markDone() },
+                lift: {
+                    finger = .zero
+                    withAnimation(.spring(duration: 0.25, bounce: 0.3)) { lifted = true }
+                    Haptics.select()
+                },
+                move: { finger = $0 },
+                drop: {
+                    let wanted = place
+                    withAnimation(.spring(duration: 0.3, bounce: 0.2)) {
+                        spot.leave(at: wanted)
+                        lifted = false
                     }
-                }
-                .onEnded { _ in
-                    let tapped = pressed && !lifted && !strayed
-                    settle()
-                    if tapped { model.markDone() }
-                }
-        )
+                    finger = .zero
+                })
+        }
+        .offset(place)
         // Read outside the offset, so it is where the button would sit unmoved, wherever it is now.
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(DoneSpot.space)) } action: { spot.home = $0 }
-        // A touch the system took away (no `onEnded`) still leaves the button where it was dragged to.
-        .onChange(of: touching) { if !touching { settle() } }
         .accessibilityElement()
         .accessibilityLabel("Done")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { model.markDone() }
     }
+}
 
-    private func settle() {
-        hold?.cancel()
-        hold = nil
-        if lifted {
-            let wanted = place
-            withAnimation(.spring(duration: 0.3, bounce: 0.2)) {
-                spot.leave(at: wanted)
-                lifted = false
+/// The touch surface over the Done button: a tap, or a hold that turns into a drag.
+private struct DoneTouch: UIViewRepresentable {
+    let press: (Bool) -> Void
+    let tap: () -> Void
+    let lift: () -> Void
+    let move: (CGSize) -> Void
+    let drop: () -> Void
+
+    final class Pad: UIView {
+        var touch: DoneTouch?
+        private var from = CGPoint.zero
+
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            let hold = UILongPressGestureRecognizer(target: self, action: #selector(held(_:)))
+            hold.minimumPressDuration = 0.22
+            // A thumb settling onto the glass moves more than the usual ten points allow.
+            hold.allowableMovement = 24
+            let tap = UITapGestureRecognizer(target: self, action: #selector(tapped))
+            addGestureRecognizer(hold)
+            addGestureRecognizer(tap)
+        }
+
+        required init?(coder: NSCoder) { fatalError() }
+
+        override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+            Haptics.prepare()
+            touch?.press(true)
+        }
+        override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) { touch?.press(false) }
+        override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) { touch?.press(false) }
+
+        @objc private func tapped() { touch?.tap() }
+
+        /// Measured on the window, since this view moves along with the button it sits on.
+        @objc private func held(_ hold: UILongPressGestureRecognizer) {
+            let at = hold.location(in: nil)
+            switch hold.state {
+            case .began:
+                from = at
+                touch?.lift()
+            case .changed:
+                touch?.move(CGSize(width: at.x - from.x, height: at.y - from.y))
+            case .ended, .cancelled, .failed:
+                touch?.press(false)
+                touch?.drop()
+            default:
+                break
             }
         }
-        pressed = false
-        strayed = false
-        finger = .zero
-        liftedAt = .zero
     }
+
+    func makeUIView(context: Context) -> Pad { Pad() }
+    func updateUIView(_ pad: Pad, context: Context) { pad.touch = self }
 }
 
 /// Done (archive) above Reply, Reply All and Forward, floating over the foot of an open conversation. A view of its own, and
