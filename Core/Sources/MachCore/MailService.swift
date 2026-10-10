@@ -145,6 +145,8 @@ public final class MailService: @unchecked Sendable {
             }, synced: { [weak self] began in
                 guard let self else { return }
                 self.lock.withLock { self.syncedFrom[account] = began }
+                // Who the account knows, so a new message can be addressed to them. Asked of Google once a day.
+                if self.transport == nil { Task { await self.peopleDirectory(account).refresh() } }
                 self.onSynced?(account)
             })
             syncs[account] = created
@@ -158,17 +160,22 @@ public final class MailService: @unchecked Sendable {
         let accounts = ((try? store.accounts()) ?? []).map(\.id)
         let ordered = accounts.filter { $0 == email.lowercased() } + accounts.filter { $0 != email.lowercased() }
         for account in ordered {
-            let directory: PeopleDirectory = lock.withLock {
-                if let existing = people[account] { return existing }
-                let auth = authenticators[account] ?? Authenticator(account: account, client: client, store: tokens)
-                authenticators[account] = auth
-                let created = PeopleDirectory(account: account, auth: auth, directory: self.directory)
-                people[account] = created
-                return created
-            }
-            if let url = await directory.photoURL(for: email) { return url }
+            if let url = await peopleDirectory(account).photoURL(for: email) { return url }
         }
         return nil
+    }
+
+    private func peopleDirectory(_ account: String) -> PeopleDirectory {
+        lock.withLock {
+            if let existing = people[account] { return existing }
+            let auth = authenticators[account] ?? Authenticator(account: account, client: client, store: tokens)
+            authenticators[account] = auth
+            let created = PeopleDirectory(account: account, auth: auth, directory: self.directory) { [weak self] known in
+                try? self?.store.saveKnownPeople(account: account, people: known)
+            }
+            people[account] = created
+            return created
+        }
     }
 
     // MARK: Accounts

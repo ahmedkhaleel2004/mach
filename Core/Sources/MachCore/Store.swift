@@ -941,6 +941,21 @@ public final class Store: @unchecked Sendable {
         }
     }
 
+    /// Adds the account's Google contacts to the people a message can be addressed to. They count for nothing in
+    /// the ordering (`uses` 0), so anyone mail has really gone to or come from is still offered first; among
+    /// themselves, the ones saved by hand come before the ones Google kept by itself.
+    public func saveKnownPeople(account: String, people: [KnownPerson]) throws {
+        try pool.write { db in
+            guard try Self.accountExists(db, account) else { return }
+            for person in people where person.email != account {
+                try db.execute(sql: """
+                    INSERT INTO contact(accountId, email, name, uses, lastUsed) VALUES (?, ?, ?, 0, ?)
+                    ON CONFLICT(accountId, email) DO UPDATE SET name = CASE WHEN name = '' THEN excluded.name ELSE name END
+                    """, arguments: [account, person.email, person.name, person.saved ? 2 : 1])
+            }
+        }
+    }
+
     public func contacts(account: String, matching text: String, limit: Int = 8) throws -> [Contact] {
         let needle = text.trimmed.lowercased()
             .replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "%", with: "\\%").replacingOccurrences(of: "_", with: "\\_")
