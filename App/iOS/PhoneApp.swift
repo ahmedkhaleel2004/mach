@@ -129,11 +129,9 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
             }
         }
         // With a relay the banner comes from the push itself; without one the app announces what it finds.
-        // The relay only watches Gmail, so Outlook's mail is always announced from here.
         let relayed = PushRelay.current != nil
-        let service = model.service
         model.service.onNewMail = { messages in
-            notifier.announce(relayed ? messages.filter { service.provider(of: $0.accountId) != .google } : messages)
+            if !relayed { notifier.announce(messages) }
         }
         notifier.follow(model.service)
         PhoneDelegate.tidy = { await notifier.tidy() }

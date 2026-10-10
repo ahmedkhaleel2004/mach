@@ -72,8 +72,7 @@ after a paid security review, which Mach has not been through yet.
 one of your own instead (accounts in any organization and personal accounts; a "Mobile and desktop" redirect of
 `http://localhost`, and `com.ahmedkhaleel.mach://oauth` for the iPhone), save `{"client_id": "<its id>"}` as
 `~/Library/Application Support/Mach/MicrosoftClient.json` (`App/Resources/MicrosoftClient.json` when building the
-iPhone app). Outlook mail is checked by the app itself:
-the push relay only watches Gmail, so an iPhone hears of new Outlook mail when Mach is open or refreshed in the background.
+iPhone app). The push relay watches Outlook accounts as well as Gmail ones.
 
 ### iPhone
 

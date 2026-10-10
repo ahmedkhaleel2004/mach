@@ -32,6 +32,12 @@ gcloud pubsub subscriptions create mach-relay --topic mach \
 
 Then set `TOPICS` in `wrangler.toml` to `{"<project number>": "projects/<project id>/topics/mach"}` and deploy again. The project number is the digits before the first `-` in the OAuth client id. An account signed in under a different Google project keeps using the once-a-minute check.
 
+## Outlook
+
+Outlook accounts need no setup: when the app registers one, the relay asks Outlook to tell it about every change
+in the inbox (at `/outlook/<RELAY_SECRET>`, on the address the app reached the relay at), and renews that each week.
+Snoozed Outlook mail is brought back by the apps, not by the relay.
+
 `POST /test` with the `X-Mach-Secret` header sends a test banner to every registered phone.
 
 ## Checking a change without deploying

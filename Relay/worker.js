@@ -100,6 +100,9 @@ async function announce(env, email) {
 
 const BULK = ["CATEGORY_PROMOTIONS", "CATEGORY_SOCIAL", "CATEGORY_UPDATES", "CATEGORY_FORUMS"];
 const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
+const GRAPH = "https://graph.microsoft.com/v1.0";
+const MICROSOFT_TOKEN = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
+const isOutlook = (account) => account.provider === "microsoft";
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 const b64url = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -172,9 +175,9 @@ async function fetchAccessToken(env, account) {
   }
   const form = new URLSearchParams({ grant_type: "refresh_token", refresh_token: account.refreshToken, client_id: account.clientId });
   if (account.clientSecret) form.set("client_secret", account.clientSecret);
-  const response = await fetch("https://oauth2.googleapis.com/token", { method: "POST", body: form });
+  const response = await fetch(isOutlook(account) ? MICROSOFT_TOKEN : "https://oauth2.googleapis.com/token", { method: "POST", body: form });
   const data = await response.json();
-  if (!data.access_token) throw new Error(`token refresh failed for ${account.email}: ${data.error || response.status}`);
+  if (!data.access_token) throw new Error(`token refresh failed for ${account.email}: ${data.error || response.status}${isOutlook(account) && data.error_codes ? ` ${data.error_codes}` : ""}`);
   const ttl = Math.max(60, (data.expires_in || 3600) - 300);
   await env.STORE.put(`token:${account.email}`, data.access_token, { expirationTtl: ttl, metadata: { until: Date.now() + ttl * 1000 } });
   remember(data.access_token, Date.now() + ttl * 1000);
@@ -219,6 +222,148 @@ async function watch(env, account) {
     account.watchExpiry = 0;
     account.watchError = data.error?.message || String(response.status);
   }
+}
+
+/// One call to Outlook. Ids are asked for in the form that survives a move between folders, which is the form
+/// the apps know a message by.
+async function graph(env, account, path, init = {}) {
+  const token = await accessToken(env, account);
+  const response = await fetch(path.startsWith("https://") ? path : GRAPH + path, {
+    ...init,
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json", prefer: 'IdType="ImmutableId"', ...(init.headers || {}) },
+  });
+  if (response.status === 401) {
+    forgetToken(account.email);
+    await env.STORE.delete(`token:${account.email}`);
+  }
+  return response;
+}
+
+/// Outlook tells this address about every change in the inbox. It asks for no topic and no setup, only an address
+/// it can reach, so every Outlook account is instant. A watch lasts under a week and is renewed by the cron.
+async function watchOutlook(env, account) {
+  if (!account.origin) {
+    account.watchExpiry = 0;
+    return;
+  }
+  const expirationDateTime = new Date(Date.now() + 6 * 86400000).toISOString();
+  if (account.subscription) {
+    const renewed = await graph(env, account, `/subscriptions/${account.subscription}`, { method: "PATCH", body: JSON.stringify({ expirationDateTime }) });
+    if (renewed.ok) {
+      account.watchExpiry = Date.parse(expirationDateTime);
+      return;
+    }
+  }
+  const response = await graph(env, account, "/subscriptions", {
+    method: "POST",
+    body: JSON.stringify({
+      changeType: "created,updated,deleted",
+      notificationUrl: `${account.origin}/outlook/${env.RELAY_SECRET}?email=${encodeURIComponent(account.email)}`,
+      resource: "me/mailFolders('inbox')/messages",
+      expirationDateTime,
+      clientState: await clientState(env, account.email),
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (response.ok) {
+    account.subscription = data.id;
+    account.watchExpiry = Date.parse(data.expirationDateTime || expirationDateTime);
+    delete account.watchError;
+  } else {
+    account.subscription = "";
+    account.watchExpiry = 0;
+    account.watchError = data.error?.message || String(response.status);
+  }
+}
+
+/// What Outlook must say back with each notification, so nobody else can make this relay check an account.
+async function clientState(env, email) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${env.RELAY_SECRET} ${email}`));
+  return b64url(digest).slice(0, 40);
+}
+
+/// A short stand-in for an Outlook id, which is too long for Apple to group banners by.
+async function shortId(id) {
+  return b64url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(id))).slice(0, 40);
+}
+
+/// Unread conversations in an Outlook inbox, or null when Outlook would not say.
+async function unreadOutlook(env, account) {
+  try {
+    const response = await graph(env, account, "/me/mailFolders/inbox/messages?$filter=isRead%20eq%20false&$select=conversationId&$top=500");
+    if (!response.ok) return null;
+    return new Set(((await response.json()).value || []).map((message) => message.conversationId)).size;
+  } catch {
+    return null;
+  }
+}
+
+/// The same job as `check`, for Outlook: pushes each message that reached the inbox since the last look.
+/// Outlook has no change log to keep a place in; the place kept is the arrival time of the newest mail seen.
+async function checkOutlook(env, account, kept) {
+  const email = account.email;
+  if (!account.since) {
+    account.since = new Date().toISOString();
+    await saveAccount(env, account, kept);
+    return { email, started: true };
+  }
+  const query = `$filter=receivedDateTime%20gt%20${encodeURIComponent(account.since)}&$orderby=receivedDateTime%20desc&$top=10`
+    + "&$select=id,conversationId,subject,bodyPreview,from,isRead,isDraft,inferenceClassification,receivedDateTime";
+  const response = await graph(env, account, `/me/mailFolders/inbox/messages?${query}`);
+  if (!response.ok) return { email, error: response.status };
+  const found = ((await response.json()).value || []).reverse();
+  // An account Outlook is not notifying us about is found by this polling; tell running apps now.
+  if (found.length && !(account.watchExpiry > Date.now())) await announce(env, email);
+  let devices = account.devices;
+  const all = kept ? await badges(kept) : null;
+  const before = all?.[email];
+  const unread = all && devices.length ? await unreadOutlook(env, account) : null;
+  if (unread !== null) all[email] = { unread, tokens: devices.map((device) => device.token) };
+  const badged = (device) => (all?.[email] ? { badge: badgeFor(all, device.token) } : {});
+  let sent = 0;
+  const mine = email.toLowerCase();
+  for (const message of devices.length ? found.slice(-5) : []) {
+    const from = message.from?.emailAddress || {};
+    const address = (from.address || "").toLowerCase();
+    // With a single inbox (the default) every new mail is announced; with the split, only what Outlook calls focused.
+    const wanted = account.allMail !== false || message.inferenceClassification !== "other";
+    if (message.isRead || message.isDraft || address === mine || !wanted) continue;
+    const thread = message.conversationId || message.id;
+    const name = from.name || address.split("@")[0];
+    const payload = {
+      aps: {
+        alert: { title: name, subtitle: message.subject || "", body: (message.bodyPreview || "").replace(/[\u200b\u200c\u200d\u034f\ufeff\u00ad]/g, "").replace(/\s+/g, " ").trim() },
+        sound: "default",
+        "thread-id": `${email}/${thread}`,
+        "content-available": 1,
+        "mutable-content": 1,
+      },
+      account: email,
+      thread,
+      senderEmail: address,
+      senderName: name,
+      senderPhoto: "",
+    };
+    const collapse = await shortId(message.id);
+    const reached = await Promise.all(devices.map((device) => push(env, device, { ...payload, aps: { ...payload.aps, ...badged(device) }, avatars: device.avatars !== false }, collapse, kept)));
+    devices = devices.filter((_, position) => reached[position]);
+    sent++;
+  }
+  if (unread !== null) {
+    if (!sent && before?.unread !== unread) {
+      const reached = await Promise.all(devices.map((device) => push(env, device, { aps: { ...badged(device), "content-available": 1 } }, "badge", kept)));
+      devices = devices.filter((_, position) => reached[position]);
+    }
+    all[email].tokens = devices.map((device) => device.token);
+    if (before?.unread !== unread || String(before?.tokens) !== String(all[email].tokens)) await kept.storage.put("badges", all).catch(() => {});
+  }
+  const newest = found.length ? found[found.length - 1].receivedDateTime : account.since;
+  if (newest !== account.since || devices.length !== account.devices.length) {
+    account.since = newest;
+    account.devices = devices;
+    await saveAccount(env, account, kept);
+  }
+  return { email, sent };
 }
 
 let apnsToken = null;
@@ -391,6 +536,7 @@ async function check(env, email, kept, notified) {
     return { email, skipped: true };
   }
   account.devices = account.devices || [];
+  if (isOutlook(account)) return checkOutlook(env, account, kept);
   if (!account.historyId) {
     const profile = await (await gmail(env, account, "/profile")).json();
     account.historyId = profile.historyId;
@@ -505,8 +651,8 @@ function alreadySeen(a, b) {
 async function renew(env, email, kept) {
   const account = await loadAccount(env, email, kept);
   if (!account) return { email, skipped: true };
-  if (topicFor(env, account) && (account.watchExpiry || 0) < Date.now() + 2 * 86400000) {
-    await watch(env, account);
+  if ((isOutlook(account) || topicFor(env, account)) && (account.watchExpiry || 0) < Date.now() + 2 * 86400000) {
+    await (isOutlook(account) ? watchOutlook(env, account) : watch(env, account));
     await saveAccount(env, account, kept);
   }
   return { email, watchExpiry: account.watchExpiry || 0 };
@@ -518,7 +664,8 @@ const SNOOZE_PREFIX = "Snoozed/";
 /// A snooze is a hidden Gmail label named "Snoozed/<time>"; this removes the label and puts the mail back, unread.
 async function wake(env, email, kept) {
   const account = await loadAccount(env, email, kept);
-  if (!account) return;
+  // An Outlook snooze is a category on the mail, which Outlook cannot be asked to list; the apps bring those back.
+  if (!account || isOutlook(account)) return;
   const listing = await gmail(env, account, "/labels");
   if (!listing.ok) return;
   const labels = (await listing.json()).labels || [];
@@ -560,6 +707,7 @@ async function wake(env, email, kept) {
 /// Adds or refreshes one account's record. Runs inside the hub so it cannot interleave with a check.
 async function registerAccount(env, email, entry, kept) {
   const account = (await loadAccount(env, email, kept)) || { email, devices: [] };
+  if (entry.provider === "microsoft") return registerOutlook(env, account, entry, kept);
   const changed = account.refreshToken !== entry.refreshToken || account.clientId !== entry.clientId
     || (account.allMail !== false) !== (entry.allMail !== false);
   account.allMail = entry.allMail !== false;
@@ -594,10 +742,47 @@ async function registerAccount(env, email, entry, kept) {
   return { email, instant: account.watchExpiry > Date.now() };
 }
 
-/// Signed out: stop Gmail's notifications and delete everything held for the account.
+/// The same as `registerAccount`, for Outlook. Microsoft gives the app a new sign-in token with every use and
+/// keeps the old ones working, so a different token here is the same sign-in and nothing is started over for it.
+async function registerOutlook(env, account, entry, kept) {
+  const email = account.email;
+  const before = JSON.stringify(account);
+  const fresh = account.provider !== "microsoft" || account.clientId !== entry.clientId || account.origin !== entry.origin;
+  account.provider = "microsoft";
+  account.allMail = entry.allMail !== false;
+  account.refreshToken = entry.refreshToken;
+  account.clientId = entry.clientId;
+  account.clientSecret = "";
+  // Where Outlook can reach this relay: the address the app itself reached it at.
+  account.origin = entry.origin;
+  account.devices = (account.devices || []).filter((d) => d.token !== entry.deviceToken);
+  if (entry.deviceToken) account.devices.push({ token: entry.deviceToken, sandbox: !!entry.sandbox, avatars: entry.avatars !== false });
+  if (fresh) {
+    forgetToken(email);
+    await env.STORE.delete(`token:${email}`);
+    account.subscription = "";
+  }
+  if (fresh || !account.watchExpiry || account.watchExpiry < Date.now() + 2 * 86400000) await watchOutlook(env, account);
+  if (!account.since) account.since = new Date().toISOString();
+  if (before !== JSON.stringify(account)) await saveAccount(env, account, kept);
+  if (kept) {
+    const all = await badges(kept);
+    const tokens = account.devices.map((device) => device.token);
+    if (!all[email] || String(all[email].tokens) !== String(tokens)) {
+      const unread = all[email]?.unread ?? (tokens.length ? await unreadOutlook(env, account) : null) ?? 0;
+      all[email] = { unread, tokens };
+      await kept.storage.put("badges", all).catch(() => {});
+    }
+  }
+  return { email, instant: account.watchExpiry > Date.now() };
+}
+
+/// Signed out: stop the service's notifications and delete everything held for the account.
 async function forget(env, email, kept) {
   const account = await loadAccount(env, email, kept);
-  if (account) await gmail(env, account, "/stop", { method: "POST" }).catch(() => {});
+  if (account && isOutlook(account)) {
+    if (account.subscription) await graph(env, account, `/subscriptions/${account.subscription}`, { method: "DELETE" }).catch(() => {});
+  } else if (account) await gmail(env, account, "/stop", { method: "POST" }).catch(() => {});
   await env.STORE.delete(`account:${email}`);
   kept?.accounts.delete(email);
   if (kept) {
@@ -623,7 +808,7 @@ async function register(request, env) {
     const email = String(entry.email).toLowerCase();
     const response = await hub(env).fetch(`https://hub/account?email=${encodeURIComponent(email)}`, {
       method: "POST",
-      body: JSON.stringify({ ...entry, deviceToken: hasDevice ? body.deviceToken : "", sandbox: !!body.sandbox, avatars: body.avatars !== false, allMail: body.allMail !== false }),
+      body: JSON.stringify({ ...entry, origin: new URL(request.url).origin, deviceToken: hasDevice ? body.deviceToken : "", sandbox: !!body.sandbox, avatars: body.avatars !== false, allMail: body.allMail !== false }),
     });
     emails.push(await response.json());
   }
@@ -664,6 +849,24 @@ export default {
       // Always acknowledge, or Google keeps redelivering.
       return new Response(null, { status: 204 });
     }
+    if (request.method === "POST" && url.pathname.startsWith("/outlook/")) {
+      if (!safeEqual(url.pathname.slice(9), env.RELAY_SECRET)) return json({ error: "forbidden" }, 403);
+      // Outlook first asks the address to say a word back, to prove it is listening.
+      const proof = url.searchParams.get("validationToken");
+      if (proof !== null) return new Response(proof, { status: 200, headers: { "content-type": "text/plain" } });
+      try {
+        const email = String(url.searchParams.get("email") || "").toLowerCase();
+        const expected = await clientState(env, email);
+        const body = await request.json();
+        if (email && (body.value || []).some((item) => safeEqual(item.clientState || "", expected))) {
+          ctx.waitUntil(hub(env).fetch(`https://hub/event?email=${encodeURIComponent(email)}`).catch((error) => console.log(String(error))));
+        }
+      } catch (error) {
+        console.log(`bad outlook notification: ${error}`);
+      }
+      // Always acknowledged, and quickly, or Outlook stops sending.
+      return new Response(null, { status: 202 });
+    }
     if (request.method === "POST" && url.pathname === "/unregister") {
       if (!safeEqual(request.headers.get("x-mach-secret") || "", env.RELAY_SECRET)) return json({ error: "forbidden" }, 403);
       const body = await request.json().catch(() => ({}));
@@ -699,7 +902,7 @@ export default {
     for (const email of emails) {
       const account = await loadAccount(env, email);
       if (!account) continue;
-      const hasTopic = !!topicFor(env, account);
+      const hasTopic = isOutlook(account) || !!topicFor(env, account);
       if (hasTopic && (account.watchExpiry || 0) < Date.now() + 2 * 86400000) {
         // The hub rewrites the record; this only needs to know how long the renewed watch lasts.
         const renewed = await hub(env).fetch(`https://hub/renew?email=${encodeURIComponent(email)}`).then((response) => response.json()).catch((error) => ({ error: String(error) }));

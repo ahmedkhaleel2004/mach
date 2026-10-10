@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Privacy policy · Mach</title>
-<meta name="description" content="Mach's privacy policy: your mail, your contacts' pictures and your Google sign-in stay on your device. The app talks to Google directly and the developer runs no server that receives your data.">
+<meta name="description" content="Mach's privacy policy: your mail, your contacts' pictures and your Google or Microsoft sign-in stay on your device. The app talks to Google or Microsoft directly and the developer runs no server that receives your data.">
 <meta name="author" content="Ahmed Khaleel">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
@@ -35,25 +35,26 @@
     <ol>
       <li><a href="#who"><i>01</i>Who is responsible</a></li>
       <li><a href="#google-data"><i>02</i>Google data Mach uses</a></li>
-      <li><a href="#where"><i>03</i>Where it is kept</a></li>
-      <li><a href="#network"><i>04</i>What leaves your device</a></li>
-      <li><a href="#never"><i>05</i>What Mach never does</a></li>
-      <li><a href="#limited-use"><i>06</i>Google Limited Use</a></li>
-      <li><a href="#relay"><i>07</i>The optional relay</a></li>
-      <li><a href="#security"><i>08</i>Security</a></li>
-      <li><a href="#remove"><i>09</i>Removing your data</a></li>
-      <li><a href="#children"><i>10</i>Children</a></li>
-      <li><a href="#site"><i>11</i>This website</a></li>
-      <li><a href="#changes"><i>12</i>Changes</a></li>
-      <li><a href="#contact"><i>13</i>Contact</a></li>
+      <li><a href="#microsoft-data"><i>03</i>Microsoft data Mach uses</a></li>
+      <li><a href="#where"><i>04</i>Where it is kept</a></li>
+      <li><a href="#network"><i>05</i>What leaves your device</a></li>
+      <li><a href="#never"><i>06</i>What Mach never does</a></li>
+      <li><a href="#limited-use"><i>07</i>Google Limited Use</a></li>
+      <li><a href="#relay"><i>08</i>The optional relay</a></li>
+      <li><a href="#security"><i>09</i>Security</a></li>
+      <li><a href="#remove"><i>10</i>Removing your data</a></li>
+      <li><a href="#children"><i>11</i>Children</a></li>
+      <li><a href="#site"><i>12</i>This website</a></li>
+      <li><a href="#changes"><i>13</i>Changes</a></li>
+      <li><a href="#contact"><i>14</i>Contact</a></li>
     </ol>
   </aside>
 
   <article>
     <h1>Privacy policy</h1>
-    <p class="meta">Mach, the mail app for Gmail on Mac and iPhone · Ahmed Khaleel · Effective 9 October 2026</p>
+    <p class="meta">Mach, the mail app for Gmail and Outlook on Mac and iPhone · Ahmed Khaleel · Effective 10 October 2026</p>
 
-    <p class="short">Mach runs on your Mac or iPhone and talks to Google directly from there. Your mail, your contacts' pictures and your Google sign-in are kept on your device. The developer runs no server that receives any of it, and cannot see it.</p>
+    <p class="short">Mach runs on your Mac or iPhone and talks to Google or Microsoft directly from there. Your mail, your contacts' pictures and your Google or Microsoft sign-in are kept on your device. The developer runs no server that receives any of it, and cannot see it.</p>
 
     <section id="who">
       <h2><i>01</i>Who is responsible</h2>
@@ -85,12 +86,37 @@
       <p>Mach never changes your contacts or your Google profile. You can turn pictures off in Mach's settings ("Profile pictures"); the mail app works the same without them.</p>
     </section>
 
+    <section id="microsoft-data">
+      <h2><i>03</i>Microsoft data Mach uses, and why</h2>
+      <p>When you sign in with Microsoft (an Outlook, Hotmail or Microsoft 365 work or school account), Mach asks for four permissions. These are all of them, and each is used only for the feature beside it.</p>
+      <dl class="tbl">
+        <div>
+          <dt>Read and write access to your mail<code>Mail.ReadWrite</code></dt>
+          <dd><b>What Mach reads:</b> your messages and conversations with their attachments, folders, categories and drafts, and Outlook's record of what changed since the last check.<br><b>What Mach changes, when you do it:</b> it saves drafts, moves conversations between folders (archive, trash, spam), flags them, marks them read or unread, and snoozes them (snoozing adds a category of Mach's own to the message).<br><b>Why:</b> this is the mail app itself.</dd>
+        </div>
+        <div>
+          <dt>Send mail as you<code>Mail.Send</code></dt>
+          <dd><b>What Mach does:</b> it sends the mail you write, when you send it.<br><b>Why:</b> sending is a separate permission at Microsoft.</dd>
+        </div>
+        <div>
+          <dt>Read your profile<code>User.Read</code></dt>
+          <dd><b>What Mach reads:</b> your name and your address.<br><b>Why:</b> to know which account you signed in to.</dd>
+        </div>
+        <div>
+          <dt>Maintain access to data you have given it access to<code>offline_access</code></dt>
+          <dd><b>What it does:</b> it lets Mach stay signed in, so you are not asked to sign in again each time. It gives access to nothing more.</dd>
+        </div>
+      </dl>
+      <p>Mach does not read your Microsoft contacts or your calendar. Mach uses Microsoft data only to provide the mail features you see in the app. It does not use it for advertising or to train AI or machine-learning models, it does not transfer it to anyone, and no human reads it.</p>
+    </section>
+
     <section id="where">
-      <h2><i>03</i>Where it is kept, and for how long</h2>
+      <h2><i>04</i>Where it is kept, and for how long</h2>
       <p>On your device, and nowhere else.</p>
       <dl class="tbl">
         <div><dt>Your mail</dt><dd>A database in the app's own data folder (on a Mac, <code>~/Library/Application Support/Mach</code>). It holds what Mach has fetched so that reading and search are instant and work offline.</dd></div>
         <div><dt>Your Google sign-in</dt><dd>The tokens Google issues are kept in the system keychain of the device, one entry per account. Mach does not mark them for iCloud Keychain syncing. Mach never sees or stores your Google password: you type it on Google's own page.</dd></div>
+        <div><dt>Your Microsoft sign-in</dt><dd>The same. The tokens Microsoft issues are kept in the system keychain of the device, and Mach never sees or stores your Microsoft password: you type it on Microsoft's own page.</dd></div>
         <div><dt>Contact pictures</dt><dd>The list of email address to picture address, per account, in the same data folder, refreshed about once a day. The pictures themselves, and company logos, in the app's cache folder.</dd></div>
         <div><dt>Attachments</dt><dd>The ones Mach has shown you a preview of, or that you opened, are downloaded once and kept in the app's cache folder.</dd></div>
         <div><dt>Settings</dt><dd>Your choices in the app (theme, text size, swipes and so on) in the app's preferences.</dd></div>
@@ -100,10 +126,11 @@
     </section>
 
     <section id="network">
-      <h2><i>04</i>What leaves your device, and to whom</h2>
+      <h2><i>05</i>What leaves your device, and to whom</h2>
       <p>The developer receives nothing. These are all the places the app connects to.</p>
       <dl class="tbl">
         <div><dt>Google</dt><dd>Sign-in, Gmail and contacts, over HTTPS, directly from your device, under your own account. Everything you do in Mach (sending, archiving, searching the whole mailbox) is a request to Gmail. Contact pictures are downloaded from the addresses Google gives.</dd></div>
+        <div><dt>Microsoft</dt><dd>Sign-in and Outlook mail, through Microsoft Graph, over HTTPS, directly from your device, under your own account. In an Outlook account, everything you do in Mach is a request to Microsoft.</dd></div>
         <div><dt>Company logos</dt><dd>When a sender has no Google picture, Mach looks for the company's certified logo the way Gmail does (the BIMI standard). It asks Google's public DNS service for a record on the sender's domain, and downloads the logo certificate from wherever that record points, usually the company's or its certificate authority's server. These requests carry no sign-in and no part of your mail, but they do show the sender's domain to Google's DNS service and your IP address to the certificate's host. Turning off "Profile pictures" stops them.</dd></div>
         <div><dt>Senders of your mail</dt><dd>Pictures, fonts and styling inside an email load from the sender's servers when you open it, as in most mail apps. That can tell a sender that you opened their message, roughly when, and your IP address. Mach has no switch to stop this yet. The system web view that draws the email keeps its own cache of what it loaded, and any cookies those servers set, on your device. Scripts in mail never run, and forms in mail cannot send.</dd></div>
         <div><dt>Links you click</dt><dd>Open in your browser, outside Mach.</dd></div>
@@ -113,19 +140,20 @@
     </section>
 
     <section id="never">
-      <h2><i>05</i>What Mach never does</h2>
+      <h2><i>06</i>What Mach never does</h2>
       <ul>
         <li>No server of the developer's receives, stores or processes your mail, your contacts or your sign-in.</li>
         <li>No analytics, no usage tracking, no crash reporting service, no advertising, no third-party SDKs that collect data.</li>
         <li>Your data is not sold, rented, shared or transferred to anyone.</li>
         <li>Your Google data is not used to develop, improve or train AI or machine-learning models. Mach has no AI features.</li>
+        <li>Your Microsoft data is not used for advertising, or to develop, improve or train AI or machine-learning models.</li>
         <li>No person reads your mail. The developer has no access to it.</li>
-        <li>There is no Mach account. You only ever sign in to Google.</li>
+        <li>There is no Mach account. You only ever sign in to Google or Microsoft.</li>
       </ul>
     </section>
 
     <section id="limited-use">
-      <h2><i>06</i>Google API Services: Limited Use</h2>
+      <h2><i>07</i>Google API Services: Limited Use</h2>
       <p class="pledge">Mach's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the <a href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes">Limited Use requirements</a>.</p>
       <p>In particular, and as described above:</p>
       <ul>
@@ -139,16 +167,17 @@
     </section>
 
     <section id="relay">
-      <h2><i>07</i>The optional push relay: off, and not the developer's</h2>
+      <h2><i>08</i>The optional push relay: off, and not the developer's</h2>
       <p>Mach's source includes a small program, the relay, that makes notifications arrive the instant mail does. <strong>It is not part of the published apps.</strong> The developer does not run one for the public, and the apps you download are not set up to use one. Without it the app checks for mail itself.</p>
-      <p>You can run a relay yourself, on your own Cloudflare account, and point your own copy of Mach at it by adding a settings file. If you do, your device sends your relay your Gmail address, your Google sign-in token, the Google key your copy of Mach uses, and your iPhone's notification address; the relay then reads the sender, subject and first words of new mail, and your contacts' picture addresses, and sends notifications through Apple's notification service. All of that is on a server you own and control. The developer has no access to it.</p>
+      <p>You can run a relay yourself, on your own Cloudflare account, and point your own copy of Mach at it by adding a settings file. If you do, your device sends your relay your Gmail or Outlook address, your Google or Microsoft sign-in token, the sign-in key your copy of Mach uses, and your iPhone's notification address; the relay then reads the sender, subject and first words of new mail, and your contacts' picture addresses, and sends notifications through Apple's notification service. All of that is on a server you own and control. The developer has no access to it.</p>
     </section>
 
     <section id="security">
-      <h2><i>08</i>Security</h2>
+      <h2><i>09</i>Security</h2>
       <ul>
-        <li>Mach's own connections, to Google and to GitHub, use HTTPS. A picture inside an old email can still load over plain HTTP if its sender wrote it that way.</li>
+        <li>Mach's own connections, to Google, to Microsoft and to GitHub, use HTTPS. A picture inside an old email can still load over plain HTTP if its sender wrote it that way.</li>
         <li>Sign-in happens on Google's own page, in your browser on a Mac and in the system sign-in sheet on iPhone, using PKCE. Mach never handles your password.</li>
+        <li>Microsoft sign-in works the same way: on Microsoft's own page, in your browser on a Mac and in the system sign-in sheet on iPhone, using PKCE. Mach never sees your password, and its Microsoft sign-in has no secret key.</li>
         <li>Sign-in tokens are in the system keychain. The mail database is protected by the device itself: your passcode and Apple's file encryption on iPhone, your login and FileVault (if you have it on) on a Mac. Mach adds no encryption of its own on top.</li>
         <li>An open email is shown under a policy that runs no scripts from mail.</li>
         <li>The source is public, so every claim here can be checked: <a href="https://github.com/ahmedkhaleel2004/mach">github.com/ahmedkhaleel2004/mach</a>.</li>
@@ -157,32 +186,33 @@
     </section>
 
     <section id="remove">
-      <h2><i>09</i>Removing your data and Mach's access</h2>
+      <h2><i>10</i>Removing your data and Mach's access</h2>
       <ul>
         <li><strong>Sign out.</strong> In Mach's settings, "Sign out" beside an account deletes that account's mail from Mach's database and its sign-in from the keychain.</li>
         <li><strong>Take away Mach's access at Google.</strong> Open <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>, choose Mach and remove its access. From then on the sign-in on any device is worthless.</li>
+        <li><strong>Take away Mach's access at Microsoft.</strong> For a personal account, open <a href="https://account.microsoft.com/privacy/app-access">account.microsoft.com/privacy/app-access</a>; for a work or school account, open <a href="https://myapps.microsoft.com">myapps.microsoft.com</a>. Choose Mach and remove its access.</li>
         <li><strong>Delete the app.</strong> On iPhone, deleting Mach removes everything it stored. On a Mac, sign out first, move Mach to the Trash, and to clear what is left delete <code>~/Library/Application Support/Mach</code>, the <code>avatars4</code>, <code>attachments</code> and <code>com.ahmedkhaleel.mach.mac</code> folders in <code>~/Library/Caches</code>, and the items named <code>com.ahmedkhaleel.mach.mac</code> in <code>~/Library/WebKit</code>, <code>~/Library/HTTPStorages</code> and <code>~/Library/Preferences</code>.</li>
       </ul>
-      <p>None of this touches your mail at Google: it is all still in Gmail. Because the developer holds none of your data, there is nothing for him to look up, correct or delete on request, but you are welcome to ask. If you are in Canada and are unhappy with an answer, you can also contact the Office of the Privacy Commissioner of Canada.</p>
+      <p>None of this touches your mail at Google: it is all still in Gmail. The same goes for Outlook mail at Microsoft. Because the developer holds none of your data, there is nothing for him to look up, correct or delete on request, but you are welcome to ask. If you are in Canada and are unhappy with an answer, you can also contact the Office of the Privacy Commissioner of Canada.</p>
     </section>
 
     <section id="children">
-      <h2><i>10</i>Children</h2>
-      <p>Mach is not directed to children under 13, and the developer does not knowingly collect personal information from anyone, of any age. To use Mach you need a Google account, which has Google's own age requirements.</p>
+      <h2><i>11</i>Children</h2>
+      <p>Mach is not directed to children under 13, and the developer does not knowingly collect personal information from anyone, of any age. To use Mach you need a Google or Microsoft account, and each has its own age requirements.</p>
     </section>
 
     <section id="site">
-      <h2><i>11</i>This website</h2>
+      <h2><i>12</i>This website</h2>
       <p>mach.ahmedkhaleel.com is a few static pages. It sets no cookies and has no analytics, trackers, advertising, external fonts or third-party scripts. It is hosted on Cloudflare, which, like any web host, handles your IP address and the page you asked for in order to deliver it and keep the service secure. If you email the developer, he will have your address and what you wrote, and uses them only to answer you.</p>
     </section>
 
     <section id="changes">
-      <h2><i>12</i>Changes to this policy</h2>
-      <p>If this policy changes, the new version is posted here with a new date, and the history of this page is public in Mach's <a href="https://github.com/ahmedkhaleel2004/mach">source repository</a>. If Mach ever changes how it uses Google user data, you will be told in the app and asked to agree before the change applies to you.</p>
+      <h2><i>13</i>Changes to this policy</h2>
+      <p>If this policy changes, the new version is posted here with a new date, and the history of this page is public in Mach's <a href="https://github.com/ahmedkhaleel2004/mach">source repository</a>. If Mach ever changes how it uses Google user data, you will be told in the app and asked to agree before the change applies to you. The same goes for Microsoft data.</p>
     </section>
 
     <section id="contact">
-      <h2><i>13</i>Contact</h2>
+      <h2><i>14</i>Contact</h2>
       <p>Ahmed Khaleel, Ontario, Canada · <!--email_off--><a href="mailto:ahmed@gitdiagram.com">ahmed@gitdiagram.com</a><!--/email_off--></p>
     </section>
   </article>
@@ -200,7 +230,7 @@
         <!--email_off--><a href="mailto:ahmed@gitdiagram.com">ahmed@gitdiagram.com</a><!--/email_off-->
       </nav>
       <p>Mach is made and published by Ahmed Khaleel, an independent developer in Ontario, Canada.</p>
-      <p class="tm">Gmail is a trademark of Google LLC. Mach is not affiliated with, endorsed by or sponsored by Google.</p>
+      <p class="tm">Gmail is a trademark of Google LLC. Mach is not affiliated with, endorsed by or sponsored by Google. Outlook is a trademark of Microsoft Corporation. Mach is not affiliated with, endorsed by or sponsored by Microsoft.</p>
     </div>
   </div>
 </footer>

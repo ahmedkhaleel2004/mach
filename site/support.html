@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Support · Mach</title>
-<meta name="description" content="Help with Mach, the mail app for Gmail: contact the developer, report a bug, sign out, remove access, and why Google shows an unverified app warning for now.">
+<meta name="description" content="Help with Mach, the mail app for Gmail and Outlook: contact the developer, report a bug, sign out, remove access, and why Google shows an unverified app warning for now.">
 <meta name="author" content="Ahmed Khaleel">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
@@ -40,7 +40,7 @@
 
   <article>
     <h1>Support</h1>
-    <p class="meta">Mach, the mail app for Gmail on Mac and iPhone · Ahmed Khaleel</p>
+    <p class="meta">Mach, the mail app for Gmail and Outlook on Mac and iPhone · Ahmed Khaleel</p>
 
     <p class="short">One person makes Mach and answers the mail about it. Write to him, or open an issue where everyone can see it.</p>
 
@@ -56,19 +56,25 @@
       <h2><i>02</i>Questions</h2>
 
       <h3>How do I sign out?</h3>
-      <p class="q">Open accounts and settings: on a Mac press <kbd>⌘</kbd> <kbd>,</kbd> or click the account name at the top; on iPhone tap the account button at the top of the list. Press "Sign out" beside the account. That deletes the account's mail from Mach and its sign-in from the device's keychain. Your mail at Google is untouched.</p>
+      <p class="q">Open accounts and settings: on a Mac press <kbd>⌘</kbd> <kbd>,</kbd> or click the account name at the top; on iPhone tap the account button at the top of the list. Press "Sign out" beside the account. That deletes the account's mail from Mach and its sign-in from the device's keychain. Your mail at Google or Microsoft is untouched.</p>
 
       <h3>How do I take away Mach's access to my Google account?</h3>
       <p class="q">Go to <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>, choose Mach, and remove its access. It takes effect at once on every device. You can sign in again any time.</p>
 
+      <h3>How do I take away Mach's access to my Microsoft account?</h3>
+      <p class="q">For a personal account (Outlook, Hotmail), go to <a href="https://account.microsoft.com/privacy/app-access">account.microsoft.com/privacy/app-access</a>. For a work or school account, go to <a href="https://myapps.microsoft.com">myapps.microsoft.com</a>. Choose Mach and remove its access. You can sign in again any time.</p>
+
       <h3>Why does Google say it "hasn't verified this app"?</h3>
       <p class="q">Google reviews every app that reads Gmail before it lets the public sign in without a warning. For a mail app that review includes a yearly outside security assessment and takes weeks to months. Mach has not finished it yet. Until it has, Google shows a warning before the usual permission screen; you can go on through "Advanced". The warning is about the review not being finished, not about anything Google found. What Mach does with the access is in the <a href="/privacy">privacy policy</a>, and the <a href="https://github.com/ahmedkhaleel2004/mach">source</a> is there to check it against.</p>
+
+      <h3>Why does Microsoft say Mach is unverified?</h3>
+      <p class="q">Microsoft puts that label on apps from developers who have not gone through its publisher verification, which needs a registered business. Mach is made by one person. The sign-in itself is Microsoft's own page, and Mach never sees your password.</p>
 
       <h3>Why does the Mac download ask for a Google key of my own?</h3>
       <p class="q">For the same reason. Until Google's review is finished, the public download ships without a sign-in key, and you make one in your own Google Cloud project: about five minutes, once. The steps are in the <a href="https://github.com/ahmedkhaleel2004/mach#install">README</a>. One-click sign-in for everyone comes with the review.</p>
 
       <h3>Where is my mail kept? Can the developer see it?</h3>
-      <p class="q">On your device, in Mach's own database, and at Google where it always was. Mach talks to Google directly. There is no Mach server, so the developer has no way to see your mail, your contacts or your sign-in.</p>
+      <p class="q">On your device, in Mach's own database, and at Google or Microsoft where it always was. Mach talks to them directly. There is no Mach server, so the developer has no way to see your mail, your contacts or your sign-in.</p>
 
       <h3>How do I remove everything Mach stored?</h3>
       <p class="q">Sign out of each account, then delete the app. On iPhone that removes everything. On a Mac a few folders stay behind in your Library; the <a href="/privacy#remove">privacy policy</a> lists them.</p>
@@ -91,7 +97,7 @@
         <!--email_off--><a href="mailto:ahmed@gitdiagram.com">ahmed@gitdiagram.com</a><!--/email_off-->
       </nav>
       <p>Mach is made and published by Ahmed Khaleel, an independent developer in Ontario, Canada.</p>
-      <p class="tm">Gmail is a trademark of Google LLC. Mach is not affiliated with, endorsed by or sponsored by Google.</p>
+      <p class="tm">Gmail is a trademark of Google LLC. Mach is not affiliated with, endorsed by or sponsored by Google. Outlook is a trademark of Microsoft Corporation. Mach is not affiliated with, endorsed by or sponsored by Microsoft.</p>
     </div>
   </div>
 </footer>

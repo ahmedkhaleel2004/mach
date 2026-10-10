@@ -278,12 +278,15 @@ public final class MailService: @unchecked Sendable {
         try store.deleteAccount(id)
     }
 
-    /// What a push relay needs to watch each account on Gmail's side. Leaves the device only if a relay is configured.
+    /// What a push relay needs to watch each account on the service's side. Leaves the device only if a relay is configured.
     public func relayAccounts() -> [[String: String]] {
         guard !offline else { return [] }
-        // The relay only knows how to watch Gmail. Outlook accounts are checked by the app itself.
-        return ((try? store.accounts()) ?? []).filter { $0.service == .google }.compactMap { account -> [String: String]? in
+        return ((try? store.accounts()) ?? []).compactMap { account -> [String: String]? in
             guard let saved = tokens.load(account: account.id) else { return nil }
+            if account.service == .microsoft {
+                guard let used = saved.client ?? microsoftClient, !used.clientId.isEmpty else { return nil }
+                return ["email": account.id, "refreshToken": saved.refreshToken, "clientId": used.clientId, "provider": MailProvider.microsoft.rawValue]
+            }
             let used = saved.client ?? client
             var entry = ["email": account.id, "refreshToken": saved.refreshToken, "clientId": used.clientId]
             if let secret = used.clientSecret { entry["clientSecret"] = secret }

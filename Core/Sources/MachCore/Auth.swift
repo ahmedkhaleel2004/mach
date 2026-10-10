@@ -210,7 +210,7 @@ public actor Authenticator {
             if response.error == "invalid_grant" { throw provider == .google ? AuthError.signedOut : AuthError.signedOutOf(provider) }
             throw AuthError.failed(response.error_description ?? response.error ?? "Could not refresh the \(provider.name) sign-in.")
         }
-        // Microsoft hands out a new refresh token every time and retires the old one; it is kept as it comes.
+        // Microsoft hands out a new refresh token every time (the old ones keep working); the newest is kept.
         let updated = TokenSet(refreshToken: response.refresh_token ?? current.refreshToken, accessToken: access,
                                expiry: Date().addingTimeInterval(response.expires_in ?? 3000), client: current.client, provider: current.provider)
         tokens = updated
