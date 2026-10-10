@@ -35,7 +35,7 @@ enum Bootstrap {
     /// The Microsoft app Outlook accounts sign in through. Its id is not a secret (a Microsoft key for an app
     /// like this has none), so unlike Google's it can ship in the source. `MicrosoftClient.json` in the data folder
     /// or the app (`{"client_id": "…"}`) points a build at another one.
-    static let microsoftClientId = ""
+    static let microsoftClientId = "50ef94ae-f0ab-4e14-8648-fb64d2126ef2"
 
     static func microsoftClient() -> OAuthClient? {
         let candidates = [directory.appendingPathComponent("MicrosoftClient.json"), Bundle.main.url(forResource: "MicrosoftClient", withExtension: "json")]

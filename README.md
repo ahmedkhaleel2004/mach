@@ -67,12 +67,12 @@ after a paid security review, which Mach has not been through yet.
    **People API**, and create an OAuth client of type **Desktop app**. Add yourself as a test user.
 2. Save the client's JSON as `~/Library/Application Support/Mach/OAuthClient.json` and open Mach.
 
-**Outlook** (outlook.com, hotmail.com, live.com, and work or school accounts) signs in through a Microsoft app
-registration instead. Its id is not a secret. Until Mach ships with one of its own, register an app at
-[entra.microsoft.com](https://entra.microsoft.com) (accounts in any organization and personal accounts; a
-"Mobile and desktop" redirect of `http://localhost`, and `com.ahmedkhaleel.mach://oauth` for the iPhone) and save
-`{"client_id": "<its id>"}` as `~/Library/Application Support/Mach/MicrosoftClient.json`
-(`App/Resources/MicrosoftClient.json` when building the iPhone app). Outlook mail is checked by the app itself:
+**Outlook** (outlook.com, hotmail.com, live.com, and work or school accounts) works out of the box: press
+**Sign in with Microsoft**. Mach ships with its own Microsoft app registration, whose id is not a secret. To use
+one of your own instead (accounts in any organization and personal accounts; a "Mobile and desktop" redirect of
+`http://localhost`, and `com.ahmedkhaleel.mach://oauth` for the iPhone), save `{"client_id": "<its id>"}` as
+`~/Library/Application Support/Mach/MicrosoftClient.json` (`App/Resources/MicrosoftClient.json` when building the
+iPhone app). Outlook mail is checked by the app itself:
 the push relay only watches Gmail, so an iPhone hears of new Outlook mail when Mach is open or refreshed in the background.
 
 ### iPhone
