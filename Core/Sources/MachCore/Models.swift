@@ -59,14 +59,19 @@ public struct Account: Codable, FetchableRecord, PersistableRecord, Identifiable
     public var historyId: String?
     public var sortOrder: Int
     public var signature: String
+    /// The mail service the account is on, as `MailProvider` spells it.
+    public var provider: String
 
-    public init(id: String, name: String, historyId: String? = nil, sortOrder: Int = 0, signature: String = "") {
+    public init(id: String, name: String, historyId: String? = nil, sortOrder: Int = 0, signature: String = "", provider: MailProvider = .google) {
         self.id = id
         self.name = name
         self.historyId = historyId
         self.sortOrder = sortOrder
         self.signature = signature
+        self.provider = provider.rawValue
     }
+
+    public var service: MailProvider { MailProvider(rawValue: provider) ?? .google }
 }
 
 public struct MailLabel: Codable, FetchableRecord, PersistableRecord, Hashable, Sendable {
@@ -103,10 +108,13 @@ public struct MailThread: Codable, FetchableRecord, PersistableRecord, Identifia
     /// Whose face stands for this conversation: the latest sender who is not you (or who you wrote to).
     public var avatarEmail: String
     public var avatarName: String
+    /// The sign-in code in the newest message, if it carries one (see `OneTimeCode`).
+    public var code: String?
 
     public init(accountId: String, id: String, subject: String, snippet: String, lastDate: Int64, participants: [String],
                 messageCount: Int, unread: Bool, starred: Bool, hasAttachments: Bool, labelIds: [String], snoozedUntil: Int64?,
-                avatarEmail: String = "", avatarName: String = "") {
+                avatarEmail: String = "", avatarName: String = "", code: String? = nil) {
+        self.code = code
         self.avatarEmail = avatarEmail
         self.avatarName = avatarName
         self.accountId = accountId
@@ -163,6 +171,8 @@ public struct Message: Codable, FetchableRecord, PersistableRecord, Identifiable
     public var bodyHTML: String?
     public var bodyText: String?
     public var attachments: [Attachment]
+    /// A sign-in code found in the message (see `OneTimeCode`). Worked out when the message is stored.
+    public var code: String? = nil
 
     public var date: Date { Date(timeIntervalSince1970: Double(internalDate) / 1000) }
     public var isUnread: Bool { labelIds.contains(SystemLabel.unread) }

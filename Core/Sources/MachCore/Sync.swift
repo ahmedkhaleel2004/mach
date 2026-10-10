@@ -1,12 +1,13 @@
 import Foundation
 
-/// Keeps one account's local copy in step with Gmail, in both directions.
+/// Keeps one account's local copy in step with its mail service (Gmail or Outlook), in both directions.
 ///
 /// Gmail's allowance is small (about 300 message downloads a minute), so this works message by message,
 /// newest first, and learns label changes from the change log instead of downloading anything twice.
+/// Outlook is spoken to in the same terms through `GraphBackend`.
 public actor AccountSync {
     public let accountId: String
-    private let api: GmailAPI
+    private let api: MailBackend
     private let store: Store
     private let report: @Sendable (String, String) -> Void
     private let arrived: @Sendable ([Message]) -> Void
@@ -32,7 +33,14 @@ public actor AccountSync {
     private let backfillTarget = 1500
     private let inboxLimit = 5000
 
-    init(accountId: String, api: GmailAPI, store: Store, offline: Bool = false, report: @escaping @Sendable (String, String) -> Void,
+    /// Changes sent to the service a moment ago: (thread, what was added and removed, when it finished). A report
+    /// that was already on its way when one of these landed describes the mailbox as it was before, so they are
+    /// laid over it again. Only kept for a service that reports whole label lists.
+    private var recentChanges: [(threadId: String, add: [String], remove: [String], at: Date)] = []
+    /// Labels already recorded for a service that has no list of them.
+    private var learnedLabels = Set<String>()
+
+    init(accountId: String, api: MailBackend, store: Store, offline: Bool = false, report: @escaping @Sendable (String, String) -> Void,
          arrived: @escaping @Sendable ([Message]) -> Void) {
         self.offline = offline
         self.accountId = accountId
@@ -70,6 +78,8 @@ public actor AccountSync {
                     try await incremental(from: historyId)
                 } else {
                     try await initial()
+                    // Outlook's first look at the change lists is what tells it how every message is filed.
+                    if api.derivesLabels { syncAgain = true }
                 }
             } catch is CancellationError {
                 return
@@ -92,22 +102,37 @@ public actor AccountSync {
 
     private func refreshProfile() async throws {
         async let labelsCall = api.labels()
-        async let sendAsCall = api.sendAs()
+        async let identityCall = api.identity()
         let labels = try await labelsCall
-        try store.replaceLabels(labels.map { MailLabel(accountId: accountId, id: $0.id, name: $0.name, type: $0.type ?? "user") }, account: accountId)
-        if let identities = try? await sendAsCall, let primary = identities.first(where: { $0.isPrimary == true }) ?? identities.first {
-            try store.setProfile(name: primary.displayName ?? "", signature: primary.signature ?? "", account: accountId)
+        try store.replaceLabels(labels.map { MailLabel(accountId: accountId, id: $0.id, name: $0.name, type: $0.type) }, account: accountId,
+                                keepingLearned: api.derivesLabels)
+        if let identity = try? await identityCall {
+            try store.setProfile(name: identity.name, signature: identity.signature, account: accountId)
         }
     }
 
     private func initial() async throws {
         // Taken before listing, so nothing that changes while we download is missed. The labels and the sender's
         // name are asked for at the same moment: one round trip instead of two before the first list.
-        async let profileCall = api.profile()
+        async let cursorCall = api.cursor()
         try await refreshProfile()
-        let profile = try await profileCall
+        let cursor = try await cursorCall
         try await reconcile(label: SystemLabel.inbox, limit: inboxLimit)
-        try store.setHistoryId(profile.historyId, account: accountId)
+        try store.setHistoryId(cursor, account: accountId)
+    }
+
+    /// Stores mail from the service. For a service with no list of labels, the ones these messages carry are recorded.
+    private func keep(_ messages: [Message]) throws {
+        try store.saveMessages(account: accountId, messages: messages)
+        try learn(messages.flatMap(\.labelIds))
+    }
+
+    private func learn(_ labels: [String]) throws {
+        guard api.derivesLabels else { return }
+        let new = Set(labels.filter { $0.hasPrefix("Label_") && !learnedLabels.contains($0) })
+        guard !new.isEmpty else { return }
+        try store.learnLabels(account: accountId, ids: new)
+        learnedLabels.formUnion(new)
     }
 
     /// Makes the local copy of one label match Gmail's: downloads what is missing and drops the label from what left.
@@ -115,11 +140,11 @@ public actor AccountSync {
         var listed: [String] = []
         var pageToken: String?
         repeat {
-            let page = try await api.listMessages(labelIds: [label], pageToken: pageToken)
-            let ids = (page.messages ?? []).map(\.id)
+            let page = try await api.list(label: label, query: nil, pageToken: pageToken, max: 500)
+            let ids = page.refs.map(\.id)
             listed += ids
             try await download(ids)
-            pageToken = page.nextPageToken
+            pageToken = page.next
         } while pageToken != nil && listed.count < limit
         let listedSet = Set(listed)
         let have = try store.messageIds(account: accountId, withLabel: label)
@@ -133,47 +158,58 @@ public actor AccountSync {
     }
 
     private func incremental(from historyId: String) async throws {
-        var changes: [Store.LabelChange] = []
-        var deleted: [String] = []
-        var added: [String] = []
-        var latest = historyId
-        var pageToken: String?
+        let asked = Date()
+        var report: RemoteChanges
         do {
-            repeat {
-                let page = try await api.history(since: historyId, pageToken: pageToken)
-                for record in page.history ?? [] {
-                    for item in record.messagesAdded ?? [] { added.append(item.message.id) }
-                    for item in record.messagesDeleted ?? [] { deleted.append(item.message.id) }
-                    for item in record.labelsAdded ?? [] { changes.append(.init(messageId: item.message.id, add: item.labelIds ?? [], remove: [])) }
-                    for item in record.labelsRemoved ?? [] { changes.append(.init(messageId: item.message.id, add: [], remove: item.labelIds ?? [])) }
-                }
-                if let id = page.historyId { latest = id }
-                pageToken = page.nextPageToken
-            } while pageToken != nil
+            report = try await api.changes(since: historyId)
         } catch let error as GmailError where error.isNotFound {
             // Gmail only keeps about a week of changes. Too old: compare the lists again instead.
-            let profile = try await api.profile()
+            let cursor = try await api.cursor()
             try await refreshProfile()
             try await reconcile(label: SystemLabel.inbox, limit: inboxLimit)
             try await reconcile(label: SystemLabel.unread, limit: 2000)
             try await reconcile(label: SystemLabel.starred, limit: 1000)
-            try store.setHistoryId(profile.historyId, account: accountId)
+            try store.setHistoryId(cursor, account: accountId)
+            if api.derivesLabels { syncAgain = true }
             return
         }
+        var changes = report.labels
+        let deleted = report.deleted
+        let added = report.added
+        // A change sent from here while the report was on its way is not in it yet: lay it over what the report says.
+        recentChanges.removeAll { Date().timeIntervalSince($0.at) > 120 }
+        let overlaid = recentChanges.filter { $0.at >= asked }
+        if !overlaid.isEmpty {
+            for index in changes.indices {
+                guard let replace = changes[index].replace, let threadId = changes[index].threadId else { continue }
+                var labels = replace
+                for change in overlaid where change.threadId == threadId { labels = Store.apply(add: change.add, remove: change.remove, to: labels) }
+                changes[index].replace = labels
+            }
+            // The mailbox has moved on since this report was asked for; the next one says where it ended up.
+            syncAgain = true
+        }
         // A label this device has never heard of (a snooze made elsewhere, a new label): learn the names first.
-        let mentioned = Set(changes.flatMap { $0.add + $0.remove }.filter { $0.hasPrefix("Label_") })
-        if try !store.hasLabels(account: accountId, ids: mentioned) { try await refreshLabels() }
-        let returned = changes.filter { $0.add.contains(SystemLabel.inbox) }.map(\.messageId)
+        if api.derivesLabels {
+            try learn(changes.flatMap { $0.replace ?? $0.add })
+        } else {
+            let mentioned = Set(changes.flatMap { $0.add + $0.remove }.filter { $0.hasPrefix("Label_") })
+            if try !store.hasLabels(account: accountId, ids: mentioned) { try await refreshLabels() }
+        }
+        var returned = changes.filter { $0.add.contains(SystemLabel.inbox) }.map(\.messageId)
         let deletedSet = Set(deleted)
         // Changes to messages not on this device are skipped by the store, which hands their ids back for download.
-        let unknown = try store.applyLabelChanges(account: accountId, changes: changes, deleted: deleted)
+        let noted = try store.applyLabelChangesNoting(account: accountId, changes: changes, deleted: deleted)
+        returned += noted.returned
+        let unknown = report.wanted.map { wanted in noted.unknown.filter { wanted.contains($0) } } ?? noted.unknown
         var wanted: [String] = []
         var seen = Set<String>()
         for id in added + unknown where !deletedSet.contains(id) && seen.insert(id).inserted { wanted.append(id) }
         try await download(wanted, urgent: true)
-        if latest != historyId { try store.setHistoryId(latest, account: accountId) }
+        if let latest = report.cursor, latest != historyId { try store.setHistoryId(latest, account: accountId) }
         // New mail, and mail that came back to the inbox unread (a snooze ending on another device).
-        let fresh = try store.notable(account: accountId, ids: (added + returned).filter { !deletedSet.contains($0) })
+        let new = added + returned + (report.unknownAreNew ? unknown : [])
+        let fresh = try store.notable(account: accountId, ids: new.filter { !deletedSet.contains($0) })
         announce(fresh)
     }
 
@@ -200,16 +236,16 @@ public actor AccountSync {
                 for id in wave {
                     group.addTask {
                         do {
-                            arrivals.add(try await api.message(id, background: !urgent).record(accountId: accountId))
+                            arrivals.add(try await api.message(id, background: !urgent))
                         } catch let error as GmailError where error.isNotFound {}
                     }
                 }
                 for try await _ in group where !urgent {
-                    try store.saveMessages(account: accountId, messages: arrivals.take())
+                    try keep(arrivals.take())
                     mailWrites += 1
                 }
             }
-            try store.saveMessages(account: accountId, messages: arrivals.take())
+            try keep(arrivals.take())
             mailWrites += 1
         }
     }
@@ -234,7 +270,8 @@ public actor AccountSync {
         do {
             let full = try await api.thread(threadId, background: !urgent)
             mailWrites += 1
-            try store.saveThread(account: accountId, threadId: threadId, messages: (full.messages ?? []).map { $0.record(accountId: accountId) })
+            try store.saveThread(account: accountId, threadId: threadId, messages: full)
+            try learn(full.flatMap(\.labelIds))
             return true
         } catch let error as GmailError where error.isNotFound {
             mailWrites += 1
@@ -292,15 +329,10 @@ public actor AccountSync {
         guard !offline else { return false }
         let state = try store.loadedState(account: accountId, key: label)
         if state?.done == true { return false }
-        let page: GMessageList
-        if label == SystemLabel.all {
-            page = try await api.listMessages(query: "-in:spam -in:trash", pageToken: state?.pageToken, max: pageSize)
-        } else {
-            page = try await api.listMessages(labelIds: [label], pageToken: state?.pageToken, max: pageSize)
-        }
-        try await download((page.messages ?? []).map(\.id))
-        try store.setLoadedState(account: accountId, key: label, pageToken: page.nextPageToken, done: page.nextPageToken == nil)
-        return page.nextPageToken != nil
+        let page = try await api.list(label: label == SystemLabel.all ? nil : label, query: nil, pageToken: state?.pageToken, max: pageSize)
+        try await download(page.refs.map(\.id))
+        try store.setLoadedState(account: accountId, key: label, pageToken: page.next, done: page.next == nil)
+        return page.next != nil
     }
 
     /// Asks Gmail to search, downloads what is missing, and returns the matching thread ids, best first.
@@ -308,14 +340,14 @@ public actor AccountSync {
     /// first; `next` fetches the page after.
     public func serverSearch(_ query: String, pageToken: String? = nil) async throws -> (threads: [String], next: String?) {
         guard !offline else { return ([], nil) }
-        let page = try await api.listMessages(query: query, pageToken: pageToken, max: 60)
-        let refs = page.messages ?? []
+        let page = try await api.list(label: nil, query: query, pageToken: pageToken, max: 60)
+        let refs = page.refs
         try await download(refs.map(\.id), urgent: true)
         var threadIds: [String] = []
         for ref in refs {
             if let threadId = ref.threadId, !threadIds.contains(threadId) { threadIds.append(threadId) }
         }
-        return (threadIds, page.nextPageToken)
+        return (threadIds, page.next)
     }
 
     public func attachment(messageId: String, attachmentId: String) async throws -> Data {
@@ -351,6 +383,7 @@ public actor AccountSync {
                 do {
                     let created = try await api.createLabel(name: name)
                     try store.saveLabel(MailLabel(accountId: accountId, id: created.id, name: created.name, type: "user"))
+                    learnedLabels.insert(created.id)
                     resolved.append(created.id)
                 } catch let error as GmailError where error.status == 409 {
                     // Another device made the same label a moment ago.
@@ -368,7 +401,8 @@ public actor AccountSync {
 
     private func refreshLabels() async throws {
         let labels = try await api.labels()
-        try store.replaceLabels(labels.map { MailLabel(accountId: accountId, id: $0.id, name: $0.name, type: $0.type ?? "user") }, account: accountId)
+        try store.replaceLabels(labels.map { MailLabel(accountId: accountId, id: $0.id, name: $0.name, type: $0.type) }, account: accountId,
+                                keepingLearned: api.derivesLabels)
         try store.recomputeSnoozed(account: accountId)
     }
 
@@ -400,8 +434,8 @@ public actor AccountSync {
                 for group in grouped.values {
                     // One request by message id only covers a thread if all of its messages are on this device.
                     let whole = (try? store.wholeThreads(account: accountId, among: group.map(\.threadId))) ?? []
-                    let batchable = group.filter { whole.contains($0.threadId) }
-                    singles += group.filter { !whole.contains($0.threadId) }
+                    let batchable = api.batchesByMessage ? group.filter { whole.contains($0.threadId) } : []
+                    singles += group.filter { !api.batchesByMessage || !whole.contains($0.threadId) }
                     if batchable.count >= 4 {
                         if await !runBatch(batchable) { ok = false }
                     } else {
@@ -461,7 +495,7 @@ public actor AccountSync {
                         // Marked first: from here Undo is refused, and a draft that is gone on retry was sent.
                         guard try store.beginSend(opId) else { return true }
                         do {
-                            _ = try await api.sendDraft(id: draftId)
+                            try await api.sendDraft(id: draftId)
                         } catch let error as GmailError where error.isNotFound {}
                     } else {
                         try await api.deleteDraft(id: draftId)
@@ -473,6 +507,7 @@ public actor AccountSync {
                 let add = try await resolve(op.addLabels)
                 let remove = try await resolve(op.removeLabels)
                 if !add.isEmpty || !remove.isEmpty { try await api.modifyThread(op.threadId, add: add, remove: remove) }
+                if api.derivesLabels { recentChanges.append((op.threadId, add, remove, Date())) }
                 try store.deleteOp(opId)
             }
             return true
@@ -488,7 +523,7 @@ public actor AccountSync {
             } else {
                 try? store.deleteOp(opId)
                 await complete(threadId: op.threadId, urgent: true)
-                report(accountId, op.kind == PendingOp.modify ? "A change could not be saved to Gmail: \(error.message)" : "Could not finish that draft: \(error.message)")
+                report(accountId, op.kind == PendingOp.modify ? "A change could not be saved to \(api.provider.name): \(error.message)" : "Could not finish that draft: \(error.message)")
             }
             return true
         } catch let error as SendError {
@@ -515,18 +550,17 @@ public actor AccountSync {
         if op.attempts > 0 {
             // An earlier attempt may have reached Gmail with its answer lost. Look before sending again.
             // Not the saved draft, which carries the same id and has not gone anywhere.
-            let query = "-in:draft rfc822msgid:" + draft.outgoingMessageId.trimmingCharacters(in: CharacterSet(charactersIn: "<>"))
-            sentId = try await api.listMessages(query: query, max: 1).messages?.first?.id
+            sentId = try await api.sentMessage(withMessageId: draft.outgoingMessageId)
         }
         if sentId == nil {
             // From here Undo is refused; if it was pressed a moment ago, the message must not go.
             guard try store.beginSend(opId) else { return }
-            sentId = try await api.sendMessage(raw: outgoing.rfc822(), threadId: draft.threadId).id
+            sentId = try await api.sendMessage(raw: outgoing.rfc822(), threadId: draft.threadId)
         }
         // The message is out. Nothing after this may make the queue send it again.
         if let sentId, let message = try? await api.message(sentId, background: false) {
             mailWrites += 1
-            try? store.saveMessages(account: accountId, messages: [message.record(accountId: accountId)])
+            try? keep([message])
         }
         try store.finishSend(op: op, sent: true)
         // It has gone, so the copy that was kept as a draft on Gmail goes too.
@@ -588,19 +622,19 @@ public actor AccountSync {
             replaced = String(source.dropFirst(6))
             remote = try await api.draftId(forMessage: String(source.dropFirst(6)))
         }
-        var saved: GDraft?
+        var saved: RemoteDraft?
         if let remote {
             do {
                 saved = try await api.saveDraft(id: remote, raw: raw, threadId: draft.threadId)
             } catch let error as GmailError where error.isNotFound {}
         }
         if saved == nil { saved = try await api.saveDraft(id: nil, raw: raw, threadId: draft.threadId) }
-        guard let saved, let messageId = saved.message?.id else { return }
+        guard let saved, let messageId = saved.messageId else { return }
         // Bring Gmail's copy here before recording it, so it is never mistaken for one that has gone.
         let message = try await api.message(messageId, background: false)
-        try store.saveMessages(account: accountId, messages: [message.record(accountId: accountId)])
+        try keep([message])
         guard try store.markUploaded(id: draft.id, version: draft.updatedAt, remoteDraftId: saved.id, remoteMessageId: messageId,
-                                     remoteThreadId: saved.message?.threadId ?? message.threadId) else {
+                                     remoteThreadId: saved.threadId ?? message.threadId) else {
             // Sent or thrown away while this was on its way up.
             try? await api.deleteDraft(id: saved.id)
             try? store.removeMessage(account: accountId, id: messageId)

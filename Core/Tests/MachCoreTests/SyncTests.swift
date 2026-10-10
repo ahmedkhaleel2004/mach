@@ -60,9 +60,10 @@ final class SyncTests: XCTestCase {
         let queries: [String: String] = [
             "account": "SELECT id, name, historyId, signature FROM account ORDER BY id",
             "label": "SELECT * FROM label ORDER BY accountId, id",
-            "thread": "SELECT * FROM thread ORDER BY accountId, id",
+            // The columns these fingerprints were recorded with, named so a column added since does not change them.
+            "thread": "SELECT accountId, id, subject, snippet, lastDate, participants, messageCount, unread, starred, hasAttachments, labelIds, snoozedUntil, avatarEmail, avatarName FROM thread ORDER BY accountId, id",
             "thread_label": "SELECT * FROM thread_label ORDER BY accountId, labelId, threadId",
-            "message": "SELECT * FROM message ORDER BY accountId, id",
+            "message": "SELECT accountId, id, threadId, internalDate, sender, toList, ccList, bccList, replyTo, subject, snippet, labelIds, messageIdHeader, refs, bodyHTML, bodyText, attachments FROM message ORDER BY accountId, id",
             "search": "SELECT m.id, f.subject, f.people, f.body FROM message m JOIN message_fts f ON f.rowid = m.rowid ORDER BY m.accountId, m.id",
             "search_count": "SELECT count(*) FROM message_fts",
             "snooze": "SELECT * FROM snooze ORDER BY accountId, threadId",

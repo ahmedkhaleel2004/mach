@@ -94,6 +94,8 @@ private final class MemoryTokenStore: TokenStore, @unchecked Sendable {
 public final class MailService: @unchecked Sendable {
     public let store: Store
     public let client: OAuthClient
+    /// The key Outlook accounts sign in with: a Microsoft app's id, which has no secret. Nil when the build has none.
+    public let microsoftClient: OAuthClient?
     private let tokens: TokenStore
     private let lock = NSLock()
     private var syncs: [String: AccountSync] = [:]
@@ -117,7 +119,9 @@ public final class MailService: @unchecked Sendable {
         set { store.announceBulk = newValue }
     }
 
-    public init(directory: URL, client: OAuthClient, tokens: TokenStore, offline: Bool = false, transport: GmailTransport? = nil) throws {
+    public init(directory: URL, client: OAuthClient, microsoftClient: OAuthClient? = nil, tokens: TokenStore, offline: Bool = false,
+                transport: GmailTransport? = nil) throws {
+        self.microsoftClient = microsoftClient
         self.offline = offline
         self.transport = transport
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -130,9 +134,11 @@ public final class MailService: @unchecked Sendable {
     public func sync(for account: String) -> AccountSync {
         lock.withLock {
             if let existing = syncs[account] { return existing }
-            let auth = authenticators[account] ?? Authenticator(account: account, client: client, store: tokens)
-            authenticators[account] = auth
-            let api = GmailAPI(auth: auth, transport: transport)
+            let provider = self.provider(of: account)
+            let auth = authenticator(account, provider: provider)
+            let api: MailBackend = provider == .microsoft
+                ? GraphBackend(api: GraphAPI(auth: auth, transport: transport), accountId: account)
+                : GmailBackend(api: GmailAPI(auth: auth, transport: transport), accountId: account)
             let created = AccountSync(accountId: account, api: api, store: store, offline: offline, report: { [weak self] account, message in
                 self?.onReport?(account, message)
             }, arrived: { [weak self] messages in
@@ -143,16 +149,31 @@ public final class MailService: @unchecked Sendable {
         }
     }
 
+    /// Which service an account is on: what its row says, or failing that what its sign-in says.
+    public func provider(of account: String) -> MailProvider {
+        if let row = try? store.account(account) { return row.service }
+        return tokens.load(account: account)?.service ?? .google
+    }
+
+    /// Call with `lock` held.
+    private func authenticator(_ account: String, provider: MailProvider) -> Authenticator {
+        if let existing = authenticators[account] { return existing }
+        let key = provider == .microsoft ? microsoftClient ?? OAuthClient(clientId: "", clientSecret: nil) : client
+        let created = Authenticator(account: account, client: key, store: tokens)
+        authenticators[account] = created
+        return created
+    }
+
     /// A person's Google profile picture, looked for in every signed-in account's contacts. Your own accounts first.
     public func googlePhotoURL(for email: String) async -> URL? {
         guard !offline else { return nil }
-        let accounts = ((try? store.accounts()) ?? []).map(\.id)
+        // Only Google accounts have Google contacts to look in.
+        let accounts = ((try? store.accounts()) ?? []).filter { $0.service == .google }.map(\.id)
         let ordered = accounts.filter { $0 == email.lowercased() } + accounts.filter { $0 != email.lowercased() }
         for account in ordered {
             let directory: PeopleDirectory = lock.withLock {
                 if let existing = people[account] { return existing }
-                let auth = authenticators[account] ?? Authenticator(account: account, client: client, store: tokens)
-                authenticators[account] = auth
+                let auth = authenticator(account, provider: .google)
                 let created = PeopleDirectory(account: account, auth: auth, directory: self.directory)
                 people[account] = created
                 return created
@@ -170,8 +191,19 @@ public final class MailService: @unchecked Sendable {
         guard !offline else { throw URLError(.notConnectedToInternet) }
         let scratch = MemoryTokenStore()
         scratch.save(newTokens, account: "pending")
-        let api = GmailAPI(auth: Authenticator(account: "pending", client: client, store: scratch))
-        let email = try await api.profile().emailAddress.lowercased()
+        let provider = newTokens.service
+        let email: String
+        if provider == .microsoft {
+            let auth = Authenticator(account: "pending", client: microsoftClient ?? OAuthClient(clientId: "", clientSecret: nil), store: scratch)
+            let me = try await GraphAPI(auth: auth, transport: transport).me()
+            guard let address = me.mail ?? me.userPrincipalName, address.contains("@") else {
+                throw AuthError.failed("Outlook did not say which address this account has.")
+            }
+            email = address.lowercased()
+        } else {
+            let api = GmailAPI(auth: Authenticator(account: "pending", client: client, store: scratch), transport: transport)
+            email = try await api.profile().emailAddress.lowercased()
+        }
         tokens.save(scratch.load(account: "pending") ?? newTokens, account: email)
         lock.withLock {
             syncs[email] = nil
@@ -181,28 +213,42 @@ public final class MailService: @unchecked Sendable {
         try? FileManager.default.removeItem(at: directory.appendingPathComponent("people-\(email).json"))
         let existing = try store.account(email)
         let nextOrder = (try store.accounts().map(\.sortOrder).max() ?? -1) + 1
-        let account = existing ?? Account(id: email, name: "", sortOrder: nextOrder)
+        var account = existing ?? Account(id: email, name: "", sortOrder: nextOrder, provider: provider)
+        account.provider = provider.rawValue
         try store.saveAccount(account)
         Task { await self.sync(for: email).sync() }
         return account
     }
 
+    private func key(for provider: MailProvider) throws -> OAuthClient {
+        guard provider == .microsoft else { return client }
+        guard let microsoftClient, !microsoftClient.clientId.isEmpty else {
+            throw AuthError.failed("This build has no Microsoft sign-in key, so it cannot add Outlook accounts yet.")
+        }
+        return microsoftClient
+    }
+
     #if os(macOS)
-    public func signIn(loginHint: String? = nil, open: @escaping @Sendable (URL) -> Void) async throws -> Account {
+    public func signIn(provider: MailProvider = .google, loginHint: String? = nil, open: @escaping @Sendable (URL) -> Void) async throws -> Account {
         guard !offline else { throw URLError(.notConnectedToInternet) }
-        return try await addAccount(tokens: try await OAuth.signIn(client: client, loginHint: loginHint, open: open))
+        return try await addAccount(tokens: try await OAuth.signIn(client: try key(for: provider), loginHint: loginHint, provider: provider, open: open))
     }
     #endif
 
     /// The iPhone's sign-in, with an iOS client: see `OAuth.signIn(client:loginHint:scope:present:)`.
-    public func signIn(loginHint: String? = nil, present: @escaping @Sendable (URL, String) async throws -> URL) async throws -> Account {
+    public func signIn(provider: MailProvider = .google, loginHint: String? = nil,
+                       present: @escaping @Sendable (URL, String) async throws -> URL) async throws -> Account {
         guard !offline else { throw URLError(.notConnectedToInternet) }
+        if provider == .microsoft {
+            return try await addAccount(tokens: try await OAuth.signInMicrosoft(client: try key(for: provider), loginHint: loginHint, present: present))
+        }
         return try await addAccount(tokens: try await OAuth.signIn(client: client, loginHint: loginHint, present: present))
     }
 
     public func removeAccount(_ id: String) throws {
         // Signing out also takes the app's access away at Google. Asked for behind the person's back, never waited for.
-        if !offline, transport == nil, let saved = tokens.load(account: id) {
+        // (Microsoft has no such request: its access is removed at account.microsoft.com, or lapses unused.)
+        if !offline, transport == nil, let saved = tokens.load(account: id), saved.service == .google {
             Task.detached(priority: .utility) { await OAuth.revoke(saved.refreshToken) }
         }
         tokens.delete(account: id)
@@ -219,7 +265,8 @@ public final class MailService: @unchecked Sendable {
     /// What a push relay needs to watch each account on Gmail's side. Leaves the device only if a relay is configured.
     public func relayAccounts() -> [[String: String]] {
         guard !offline else { return [] }
-        return ((try? store.accounts()) ?? []).compactMap { account -> [String: String]? in
+        // The relay only knows how to watch Gmail. Outlook accounts are checked by the app itself.
+        return ((try? store.accounts()) ?? []).filter { $0.service == .google }.compactMap { account -> [String: String]? in
             guard let saved = tokens.load(account: account.id) else { return nil }
             let used = saved.client ?? client
             var entry = ["email": account.id, "refreshToken": saved.refreshToken, "clientId": used.clientId]

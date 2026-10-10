@@ -50,8 +50,17 @@ public struct GmailError: Error, LocalizedError, Sendable {
     public let status: Int
     public let reason: String
     public let message: String
+    /// Which service said it: "Gmail" or "Outlook".
+    public let service: String
 
-    public var errorDescription: String? { "Gmail \(status): \(message)" }
+    init(status: Int, reason: String, message: String, service: String = "Gmail") {
+        self.status = status
+        self.reason = reason
+        self.message = message
+        self.service = service
+    }
+
+    public var errorDescription: String? { "\(service) \(status): \(message)" }
     public var isNotFound: Bool { status == 404 }
     /// The request can never succeed, so retrying it is pointless.
     public var isPermanent: Bool { status >= 400 && status < 500 && status != 429 && status != 401 && !isRateLimit }

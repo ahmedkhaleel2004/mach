@@ -112,6 +112,32 @@ public final class Store: @unchecked Sendable {
             // Lets search walk threads newest first without reading the thread rows themselves (see `search`).
             try db.execute(sql: "CREATE INDEX thread_recent ON thread(lastDate DESC, accountId, id)")
         }
+        migrator.registerMigration("outlook") { db in
+            try db.execute(sql: "ALTER TABLE account ADD COLUMN provider TEXT NOT NULL DEFAULT 'google'")
+        }
+        migrator.registerMigration("codes") { db in
+            try db.execute(sql: """
+                ALTER TABLE message ADD COLUMN code TEXT;
+                ALTER TABLE thread ADD COLUMN code TEXT;
+                """)
+            // Codes are only worth anything fresh, so only mail of the last day is looked through again.
+            let since = Self.now() - 86_400_000
+            var touched: [(String, String)] = []
+            for row in try Row.fetchAll(db, sql: "SELECT rowid, accountId, threadId, subject, bodyText, bodyHTML, labelIds FROM message WHERE internalDate > ?", arguments: [since]) {
+                let labels = Self.strings(row["labelIds"])
+                guard !labels.contains(SystemLabel.sent), !labels.contains(SystemLabel.draft) else { continue }
+                let text = (row["bodyText"] as String?).map { String($0.prefix(4000)) } ?? (row["bodyHTML"] as String?).map { HTMLText.strip($0) } ?? ""
+                guard let code = OneTimeCode.find(subject: row["subject"], text: text) else { continue }
+                try db.execute(sql: "UPDATE message SET code = ? WHERE rowid = ?", arguments: [code, row["rowid"] as Int64])
+                touched.append((row["accountId"], row["threadId"]))
+            }
+            for (account, thread) in touched {
+                try db.execute(sql: """
+                    UPDATE thread SET code = (SELECT code FROM message WHERE accountId = ?1 AND threadId = ?2 AND labelIds NOT LIKE '%"DRAFT"%'
+                        ORDER BY internalDate DESC, id DESC LIMIT 1) WHERE accountId = ?1 AND id = ?2
+                    """, arguments: [account, thread])
+            }
+        }
         return migrator
     }
 
@@ -160,7 +186,7 @@ public final class Store: @unchecked Sendable {
     /// The thread table's columns in a fixed order, so rows can be read by position (see `thread(_:)`).
     static let threadColumns = """
         thread.accountId, thread.id, thread.subject, thread.snippet, thread.lastDate, thread.participants, thread.messageCount, \
-        thread.unread, thread.starred, thread.hasAttachments, thread.labelIds, thread.snoozedUntil, thread.avatarEmail, thread.avatarName
+        thread.unread, thread.starred, thread.hasAttachments, thread.labelIds, thread.snoozedUntil, thread.avatarEmail, thread.avatarName, thread.code
         """
 
     /// A thread from a row selected with `threadColumns`. Reading by position skips the per-row name lookups and the
@@ -168,7 +194,7 @@ public final class Store: @unchecked Sendable {
     static func thread(_ row: Row) throws -> MailThread {
         MailThread(accountId: row[0], id: row[1], subject: row[2], snippet: row[3], lastDate: row[4], participants: try decodeStrings(row[5]),
                    messageCount: row[6], unread: row[7], starred: row[8], hasAttachments: row[9], labelIds: try decodeStrings(row[10]),
-                   snoozedUntil: row[11], avatarEmail: row[12], avatarName: row[13])
+                   snoozedUntil: row[11], avatarEmail: row[12], avatarName: row[13], code: row[14])
     }
 
     private static func fetchThreads(_ db: Database, sql: String, arguments: StatementArguments) throws -> [MailThread] {
@@ -240,10 +266,34 @@ public final class Store: @unchecked Sendable {
         }
     }
 
-    func replaceLabels(_ labels: [MailLabel], account: String) throws {
+    /// `keepingLearned` leaves alone the labels that were learned from messages (`Label_<name>`), for a service
+    /// whose own list does not include them.
+    func replaceLabels(_ labels: [MailLabel], account: String, keepingLearned: Bool = false) throws {
         try pool.write { db in
-            try db.execute(sql: "DELETE FROM label WHERE accountId = ?", arguments: [account])
-            for label in labels { try label.insert(db) }
+            if keepingLearned {
+                try db.execute(sql: "DELETE FROM label WHERE accountId = ? AND id NOT LIKE 'Label\\_%' ESCAPE '\\'", arguments: [account])
+            } else {
+                try db.execute(sql: "DELETE FROM label WHERE accountId = ?", arguments: [account])
+            }
+            for label in labels { try label.insert(db, onConflict: .replace) }
+        }
+    }
+
+    /// Records labels that messages carry and the service has no list of: a `Label_<name>` is named by its own id.
+    func learnLabels(account: String, ids: Set<String>) throws {
+        guard !ids.isEmpty else { return }
+        try pool.write { db in
+            var learned = false
+            for id in ids where id.hasPrefix("Label_") {
+                try db.execute(sql: "INSERT OR IGNORE INTO label(accountId, id, name, type) VALUES (?, ?, ?, 'user')", arguments: [account, id, String(id.dropFirst(6))])
+                if db.changesCount > 0, id.dropFirst(6).hasPrefix(SystemLabel.snoozePrefix) { learned = true }
+            }
+            guard learned else { return }
+            // A snooze made on another device is only recognised once its label has a name.
+            let marks = databaseQuestionMarks(count: ids.count)
+            for threadId in try String.fetchAll(db, sql: "SELECT DISTINCT threadId FROM thread_label WHERE accountId = ? AND labelId IN (\(marks))", arguments: StatementArguments([account] + Array(ids))) {
+                try self.recompute(db, account: account, threadId: threadId)
+            }
         }
     }
 
@@ -355,16 +405,40 @@ public final class Store: @unchecked Sendable {
         }
     }
 
-    struct LabelChange {
+    struct LabelChange: Sendable {
         var messageId: String
         var add: [String]
         var remove: [String]
+        /// When set, the whole list of labels the message now has, instead of what was added and removed.
+        var replace: [String]?
+        var threadId: String?
+
+        init(messageId: String, add: [String], remove: [String]) {
+            self.messageId = messageId
+            self.add = add
+            self.remove = remove
+        }
+
+        init(messageId: String, replace: [String], threadId: String?) {
+            self.messageId = messageId
+            self.add = []
+            self.remove = []
+            self.replace = replace
+            self.threadId = threadId
+        }
     }
 
     /// Applies label changes Gmail reported. Returns the ids it does not have, which then need downloading.
     func applyLabelChanges(account: String, changes: [LabelChange], deleted: [String]) throws -> [String] {
-        guard !changes.isEmpty || !deleted.isEmpty else { return [] }
+        try applyLabelChangesNoting(account: account, changes: changes, deleted: deleted).unknown
+    }
+
+    /// The same, also saying which messages came (back) into the inbox by a change that gave the whole label list.
+    func applyLabelChangesNoting(account: String, changes: [LabelChange], deleted: [String]) throws -> (unknown: [String], returned: [String]) {
+        guard !changes.isEmpty || !deleted.isEmpty else { return ([], []) }
         return try pool.write { db in
+            var returned: [String] = []
+            var unknownSeen = Set<String>()
             var unknown: [String] = []
             var touched = Set<String>()
             var pending = PendingModifies(account: account)
@@ -372,12 +446,13 @@ public final class Store: @unchecked Sendable {
             let relabel = try db.cachedStatement(sql: "UPDATE message SET labelIds = ? WHERE accountId = ? AND id = ?")
             for change in changes {
                 guard let row = try Row.fetchOne(lookup, arguments: [account, change.messageId]) else {
-                    if !unknown.contains(change.messageId) { unknown.append(change.messageId) }
+                    if unknownSeen.insert(change.messageId).inserted { unknown.append(change.messageId) }
                     continue
                 }
                 let current = Self.strings(row["labelIds"])
                 let threadId: String = row["threadId"]
-                var updated = Self.apply(add: change.add, remove: change.remove, to: current)
+                var updated = change.replace ?? Self.apply(add: change.add, remove: change.remove, to: current)
+                if change.replace != nil, updated.contains(SystemLabel.inbox), !current.contains(SystemLabel.inbox) { returned.append(change.messageId) }
                 // Changes made here that Gmail has not received yet stay on top of what Gmail reports.
                 for op in try pending.ops(db, threadId: threadId) {
                     updated = Self.apply(add: op.addLabels, remove: op.removeLabels, to: updated)
@@ -395,7 +470,7 @@ public final class Store: @unchecked Sendable {
                 touched.insert(row["threadId"])
             }
             for threadId in touched { try self.recompute(db, account: account, threadId: threadId) }
-            return unknown
+            return (unknown, returned)
         }
     }
 
@@ -490,9 +565,13 @@ public final class Store: @unchecked Sendable {
     }
 
     private func insertMessage(_ db: Database, _ message: Message, searchText: String? = nil) throws {
+        let body = searchText ?? Self.searchText(message)
+        var message = message
+        if !message.isLocal, !message.isDraft, !message.labelIds.contains(SystemLabel.sent) {
+            message.code = OneTimeCode.find(subject: message.subject, text: body)
+        }
         try message.insert(db, onConflict: .replace)
         let rowid = db.lastInsertedRowID
-        let body = searchText ?? Self.searchText(message)
         try db.execute(sql: "INSERT INTO message_fts(rowid, subject, people, body) VALUES (?, ?, ?, ?)",
                        arguments: [rowid, message.subject, [message.sender, message.toList, message.ccList].map(Message.readable).joined(separator: " "), body])
         guard !message.isLocal, !message.isDraft else { return }
@@ -568,7 +647,7 @@ public final class Store: @unchecked Sendable {
     /// Rebuilds the thread row and its list memberships from its messages.
     func recompute(_ db: Database, account: String, threadId: String) throws {
         let rows = try Row.fetchAll(db.cachedStatement(sql: """
-            SELECT id, internalDate, sender, toList, subject, snippet, labelIds, attachments
+            SELECT id, internalDate, sender, toList, subject, snippet, labelIds, attachments, code
             FROM message WHERE accountId = ? AND threadId = ? ORDER BY internalDate, id
             """), arguments: [account, threadId])
         guard !rows.isEmpty else {
@@ -587,6 +666,7 @@ public final class Store: @unchecked Sendable {
         var fallbackFace: EmailAddress?
         var lastDate: Int64 = 0
         var snippet = ""
+        var code: String?
         for row in rows {
             let labels = Self.strings(row["labelIds"])
             for label in labels where !union.contains(label) { union.append(label) }
@@ -598,6 +678,7 @@ public final class Store: @unchecked Sendable {
             if !isDraft || lastDate == 0 {
                 lastDate = row["internalDate"]
                 snippet = row["snippet"]
+                code = row["code"]
             }
             let sender: String = row["sender"]
             let address = EmailAddress.parseList(sender).first
@@ -630,23 +711,23 @@ public final class Store: @unchecked Sendable {
             participants: participants, messageCount: rows.count,
             unread: union.contains(SystemLabel.unread), starred: union.contains(SystemLabel.starred),
             hasAttachments: hasAttachments, labelIds: union, snoozedUntil: snoozedUntil,
-            avatarEmail: (face ?? fallbackFace)?.email ?? "", avatarName: (face ?? fallbackFace)?.displayName ?? "")
+            avatarEmail: (face ?? fallbackFace)?.email ?? "", avatarName: (face ?? fallbackFace)?.displayName ?? "", code: code)
         // Most rebuilds change little or nothing, so only what differs from what is stored is written.
         let stored = try Self.fetchThreads(db, sql: "SELECT \(Self.threadColumns) FROM thread WHERE accountId = ? AND id = ?", arguments: [account, threadId]).first
         if stored == nil {
             try db.cachedStatement(sql: """
                 INSERT INTO thread(accountId, id, subject, snippet, lastDate, participants, messageCount, unread, starred, hasAttachments,
-                    labelIds, snoozedUntil, avatarEmail, avatarName) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    labelIds, snoozedUntil, avatarEmail, avatarName, code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """).execute(arguments: [
                     account, threadId, thread.subject, thread.snippet, thread.lastDate, Self.json(thread.participants), thread.messageCount, thread.unread,
-                    thread.starred, thread.hasAttachments, Self.json(thread.labelIds), thread.snoozedUntil, thread.avatarEmail, thread.avatarName])
+                    thread.starred, thread.hasAttachments, Self.json(thread.labelIds), thread.snoozedUntil, thread.avatarEmail, thread.avatarName, thread.code])
         } else if stored != thread {
             try db.cachedStatement(sql: """
                 UPDATE thread SET subject = ?, snippet = ?, lastDate = ?, participants = ?, messageCount = ?, unread = ?, starred = ?, hasAttachments = ?,
-                    labelIds = ?, snoozedUntil = ?, avatarEmail = ?, avatarName = ? WHERE accountId = ? AND id = ?
+                    labelIds = ?, snoozedUntil = ?, avatarEmail = ?, avatarName = ?, code = ? WHERE accountId = ? AND id = ?
                 """).execute(arguments: [
                     thread.subject, thread.snippet, thread.lastDate, Self.json(thread.participants), thread.messageCount, thread.unread, thread.starred,
-                    thread.hasAttachments, Self.json(thread.labelIds), thread.snoozedUntil, thread.avatarEmail, thread.avatarName, account, threadId])
+                    thread.hasAttachments, Self.json(thread.labelIds), thread.snoozedUntil, thread.avatarEmail, thread.avatarName, thread.code, account, threadId])
         }
 
         var memberships = union
@@ -708,7 +789,7 @@ public final class Store: @unchecked Sendable {
         let statement = try db.cachedStatement(sql: sql)
         for (index, id) in accounts.enumerated() where share[index] > 0 {
             let rows = try Row.fetchCursor(statement, arguments: [id, label, share[index]])
-            while let row = try rows.next() { merged.append((try thread(row), row[14])) }
+            while let row = try rows.next() { merged.append((try thread(row), row[15])) }
         }
         merged.sort { ascending ? $0.1 < $1.1 : $0.1 > $1.1 }
         return merged.map(\.0)
@@ -905,7 +986,7 @@ public final class Store: @unchecked Sendable {
         var byRow: [Int64: MailThread] = [:]
         let found = try Row.fetchCursor(db, sql: "SELECT \(threadColumns), thread.rowid FROM thread WHERE rowid IN (\(databaseQuestionMarks(count: kept.count)))",
                                         arguments: StatementArguments(kept))
-        while let row = try found.next() { byRow[row[14]] = try thread(row) }
+        while let row = try found.next() { byRow[row[15]] = try thread(row) }
         return kept.compactMap { byRow[$0] }
     }
 

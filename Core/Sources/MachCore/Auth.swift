@@ -70,13 +70,19 @@ public struct TokenSet: Codable, Sendable {
     /// Tokens only refresh with the key that issued them, and an account in a company's Google Workspace
     /// may be limited to that company's key.
     public var client: OAuthClient?
+    /// The service that issued them. Nil in sign-ins saved before Outlook was supported, which are all Google's.
+    public var provider: MailProvider?
 
-    public init(refreshToken: String, accessToken: String = "", expiry: Date = .distantPast, client: OAuthClient? = nil) {
+    public init(refreshToken: String, accessToken: String = "", expiry: Date = .distantPast, client: OAuthClient? = nil,
+                provider: MailProvider? = nil) {
         self.refreshToken = refreshToken
         self.accessToken = accessToken
         self.expiry = expiry
         self.client = client
+        self.provider = provider
     }
+
+    public var service: MailProvider { provider ?? .google }
 }
 
 public protocol TokenStore: Sendable {
@@ -150,11 +156,13 @@ public struct FileTokenStore: TokenStore {
 
 public enum AuthError: Error, LocalizedError {
     case signedOut
+    case signedOutOf(MailProvider)
     case failed(String)
 
     public var errorDescription: String? {
         switch self {
         case .signedOut: return "Google sign-in has expired. Sign in again."
+        case .signedOutOf(let provider): return "\(provider.name) sign-in has expired. Sign in again."
         case .failed(let message): return message
         }
     }
@@ -196,13 +204,15 @@ public actor Authenticator {
     }
 
     private func refresh(_ current: TokenSet) async throws -> String {
-        let response = try await OAuth.postToken(OAuth.refreshForm(client: current.client ?? self.client, refreshToken: current.refreshToken))
+        let provider = current.service
+        let response = try await OAuth.postToken(OAuth.refreshForm(client: current.client ?? self.client, refreshToken: current.refreshToken), provider: provider)
         guard let access = response.access_token else {
-            if response.error == "invalid_grant" { throw AuthError.signedOut }
-            throw AuthError.failed(response.error_description ?? response.error ?? "Could not refresh the Google sign-in.")
+            if response.error == "invalid_grant" { throw provider == .google ? AuthError.signedOut : AuthError.signedOutOf(provider) }
+            throw AuthError.failed(response.error_description ?? response.error ?? "Could not refresh the \(provider.name) sign-in.")
         }
+        // Microsoft hands out a new refresh token every time and retires the old one; it is kept as it comes.
         let updated = TokenSet(refreshToken: response.refresh_token ?? current.refreshToken, accessToken: access,
-                               expiry: Date().addingTimeInterval(response.expires_in ?? 3000), client: current.client)
+                               expiry: Date().addingTimeInterval(response.expires_in ?? 3000), client: current.client, provider: current.provider)
         tokens = updated
         store.save(updated, account: account)
         return access
@@ -218,8 +228,24 @@ public enum OAuth {
         "https://www.googleapis.com/auth/userinfo.profile",
     ].joined(separator: " ")
 
-    fileprivate static func postToken(_ form: [String: String]) async throws -> TokenResponse {
-        let (data, _) = try await URLSession.shared.data(for: formRequest("https://oauth2.googleapis.com/token", form))
+    /// What Mach asks Microsoft for: reading and changing mail, sending it, and the account's own name and address.
+    public static let microsoftScope = "offline_access User.Read Mail.ReadWrite Mail.Send"
+
+    public static func scope(for provider: MailProvider) -> String { provider == .google ? scope : microsoftScope }
+
+    /// Microsoft's sign-in, for personal accounts and for work or school ones alike.
+    static let microsoftBase = "https://login.microsoftonline.com/common/oauth2/v2.0"
+
+    static func tokenAddress(_ provider: MailProvider) -> String {
+        provider == .google ? "https://oauth2.googleapis.com/token" : microsoftBase + "/token"
+    }
+
+    /// Where Microsoft sends an iPhone's sign-in back to. Registered on the Microsoft app as a redirect address.
+    public static let microsoftPhoneScheme = "com.ahmedkhaleel.mach"
+    static let microsoftPhoneRedirect = microsoftPhoneScheme + "://oauth"
+
+    fileprivate static func postToken(_ form: [String: String], provider: MailProvider = .google) async throws -> TokenResponse {
+        let (data, _) = try await URLSession.shared.data(for: formRequest(tokenAddress(provider), form))
         return try JSONDecoder().decode(TokenResponse.self, from: data)
     }
 
@@ -256,7 +282,24 @@ public enum OAuth {
     }
 
     static func authorizationURL(client: OAuthClient, redirect: String, challenge: String, state: String,
-                                 loginHint: String?, scope: String) -> URL {
+                                 loginHint: String?, scope: String, provider: MailProvider = .google) -> URL {
+        if provider == .microsoft {
+            var components = URLComponents(string: microsoftBase + "/authorize")!
+            components.queryItems = [
+                URLQueryItem(name: "client_id", value: client.clientId),
+                URLQueryItem(name: "redirect_uri", value: redirect),
+                URLQueryItem(name: "response_type", value: "code"),
+                URLQueryItem(name: "response_mode", value: "query"),
+                URLQueryItem(name: "scope", value: scope),
+                URLQueryItem(name: "code_challenge", value: challenge),
+                URLQueryItem(name: "code_challenge_method", value: "S256"),
+                // Always ask which account: a browser that is signed in to one would otherwise pick it silently.
+                URLQueryItem(name: "prompt", value: "select_account"),
+                URLQueryItem(name: "state", value: state),
+            ]
+            if let loginHint { components.queryItems?.append(URLQueryItem(name: "login_hint", value: loginHint)) }
+            return components.url!
+        }
         var components = URLComponents(string: "https://accounts.google.com/o/oauth2/v2/auth")!
         components.queryItems = [
             URLQueryItem(name: "client_id", value: client.clientId),
@@ -289,17 +332,31 @@ public enum OAuth {
     static func code(from callback: [String: String], state: String) throws -> String {
         guard callback["state"] == state else { throw AuthError.failed("The sign-in reply did not match the request.") }
         guard let code = callback["code"] else {
-            throw AuthError.failed(callback["error"] == "access_denied" ? "Sign-in was cancelled." : "Google did not return a sign-in code.")
+            throw AuthError.failed(callback["error"] == "access_denied" ? "Sign-in was cancelled." : "The sign-in page did not return a code.")
         }
         return code
     }
 
-    private static func exchange(_ form: [String: String]) async throws -> TokenSet {
-        let response = try await postToken(form)
+    private static func exchange(_ form: [String: String], provider: MailProvider = .google) async throws -> TokenSet {
+        let response = try await postToken(form, provider: provider)
         guard let access = response.access_token, let refresh = response.refresh_token else {
-            throw AuthError.failed(response.error_description ?? response.error ?? "Google did not return tokens.")
+            throw AuthError.failed(response.error_description ?? response.error ?? "\(provider.name) did not return tokens.")
         }
-        return TokenSet(refreshToken: refresh, accessToken: access, expiry: Date().addingTimeInterval(response.expires_in ?? 3000))
+        return TokenSet(refreshToken: refresh, accessToken: access, expiry: Date().addingTimeInterval(response.expires_in ?? 3000),
+                        provider: provider == .google ? nil : provider)
+    }
+
+    /// Runs Microsoft's sign-in on an iPhone: its page in the system sign-in sheet, answered on the app's own address.
+    /// A Microsoft key has no secret on any device.
+    public static func signInMicrosoft(client: OAuthClient, loginHint: String? = nil, scope: String = OAuth.microsoftScope,
+                                       present: @escaping @Sendable (URL, String) async throws -> URL) async throws -> TokenSet {
+        let verifier = randomString(64)
+        let state = randomString(24)
+        let page = authorizationURL(client: client, redirect: microsoftPhoneRedirect, challenge: challenge(for: verifier), state: state,
+                                    loginHint: loginHint, scope: scope, provider: .microsoft)
+        let callback = callbackParameters(try await present(page, microsoftPhoneScheme))
+        return try await exchange(codeForm(client: client, code: try code(from: callback, state: state), redirect: microsoftPhoneRedirect, verifier: verifier),
+                                  provider: .microsoft)
     }
 
     /// Runs Google's sign-in for an iOS client and returns the tokens.
@@ -334,15 +391,16 @@ public enum OAuth {
     ///
     /// Google sends the browser back to a one-shot listener on this device, so no server is involved.
     /// `open` must show the URL to the person (the default browser).
-    public static func signIn(client: OAuthClient, loginHint: String? = nil, scope: String = OAuth.scope,
+    public static func signIn(client: OAuthClient, loginHint: String? = nil, scope: String? = nil, provider: MailProvider = .google,
                               open: @escaping @Sendable (URL) -> Void) async throws -> TokenSet {
         let verifier = randomString(64)
         let state = randomString(24)
         let listener = try LoopbackListener(state: state)
         let port = try await listener.start()
-        let redirect = "http://127.0.0.1:\(port)"
+        // Microsoft only lets a desktop app come back to "localhost" (any port); Google wants the number.
+        let redirect = provider == .microsoft ? "http://localhost:\(port)" : "http://127.0.0.1:\(port)"
         open(authorizationURL(client: client, redirect: redirect, challenge: challenge(for: verifier), state: state,
-                              loginHint: loginHint, scope: scope))
+                              loginHint: loginHint, scope: scope ?? self.scope(for: provider), provider: provider))
 
         // Nobody waits forever: an abandoned browser tab ends the attempt after five minutes.
         let timeout = Task {
@@ -355,7 +413,8 @@ public enum OAuth {
         } onCancel: {
             listener.cancel()
         }
-        return try await exchange(codeForm(client: client, code: try code(from: callback, state: state), redirect: redirect, verifier: verifier))
+        return try await exchange(codeForm(client: client, code: try code(from: callback, state: state), redirect: redirect, verifier: verifier),
+                                  provider: provider)
     }
     #endif
 
