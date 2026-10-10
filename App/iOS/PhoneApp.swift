@@ -103,12 +103,14 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
             model?.open(account: account, threadId: thread)
         }, isFrontmost: { UIApplication.shared.applicationState == .active })
         // Screenshots and recordings are launched with "-noPrompts YES" so the system alert does not cover them.
-        if !UserDefaults.standard.bool(forKey: "noPrompts") { notifier.askPermission() }
+        let prompts = !UserDefaults.standard.bool(forKey: "noPrompts")
         PhoneDelegate.service = model.service
         if let relay = PushRelay.current { PhoneDelegate.live = LiveLink(relay: relay, service: model.service) }
         model.avatarsChanged = { PhoneDelegate.register() }
         model.splitChanged = { PhoneDelegate.register() }
         model.accountsChanged = {
+            // Asked when an account has just signed in, not on the sign-in screen: banners mean nothing before there is mail.
+            if prompts { notifier.askPermission() }
             PhoneDelegate.register()
             PhoneDelegate.live?.start()
         }
