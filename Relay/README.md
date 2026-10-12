@@ -35,18 +35,30 @@ Then set `TOPICS` in `wrangler.toml` to `{"<project number>": "projects/<project
 ## Outlook
 
 Outlook accounts need no setup: when the app registers one, the relay asks Outlook to tell it about every change
-in the inbox (at `/outlook/<RELAY_SECRET>`, on the address the app reached the relay at), and renews that each week.
-Snoozed Outlook mail is brought back by the apps, not by the relay.
+in the inbox, on the address the app reached the relay at, and renews that each week. The address Outlook is given
+is `/outlook/<word>?email=<account>`, where the word is made from `RELAY_SECRET` for that one account. It is never
+the secret itself, and one account's word opens nothing else.
+
+Snoozed Outlook mail is brought back by the relay too, as Gmail's is: once a minute it asks Outlook which mail
+carries a category, and a conversation whose `Snoozed/<time>` category has come due is moved from the archive back
+to the inbox, marked unread and announced on the phone. An account with nothing snoozed costs that one question.
+
+A banner for mail from one of the account's saved Outlook contacts shows their picture. The phone fetches it from
+`/photo/<word>?email=<account>&id=<contact>`, where the word is made from `RELAY_SECRET` for that one contact, so
+the address opens that one picture and nothing else. The relay asks Outlook for the picture and hands it straight
+on; no picture is stored. Accounts signed in before the app asked to see contacts get banners without pictures
+until they sign in again.
 
 `POST /test` with the `X-Mach-Secret` header sends a test banner to every registered phone.
 
 ## Checking a change without deploying
 
-Nothing here touches the network or a real account: Gmail, Google sign-in, Apple and the store are stand-ins.
+Nothing here touches the network or a real account: Gmail, Outlook, both sign-ins, Apple and the store are stand-ins.
 
 ```sh
 cd Relay
-bun test                 # the same pushes, app messages and answers as test/golden.json, plus the cost limits
+bun test                 # the same pushes, app messages and answers as test/golden.json, plus the cost limits,
+                         # and the Outlook side (test/outlook.test.js): new mail, snoozes, contact pictures
 bun test/bench.js        # what one Gmail notification costs: store reads and writes, calls out, simulated time
 bun test/smoke.js        # the worker in Cloudflare's own runtime on this machine (wrangler dev --local)
 ```

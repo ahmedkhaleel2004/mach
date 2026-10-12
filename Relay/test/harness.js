@@ -1,5 +1,5 @@
-// A made-up world for the relay to run in: Gmail, Google sign-in, Apple push, the key-value store and the hub
-// are all stand-ins that live in this process. Nothing here touches the network, and no real account, token or
+// A made-up world for the relay to run in: Gmail, Google sign-in, Outlook, Microsoft sign-in, Apple push, the
+// key-value store and the hub are all stand-ins that live in this process. Nothing here touches the network, and no real account, token or
 // device appears anywhere.
 //
 // Everything the relay does that the outside can see is written to `world.seen` (Apple pushes, messages to open
@@ -20,8 +20,12 @@ const sleep = (ms) => (ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)
 /// `latency` (milliseconds per kind of call) is zero for the behaviour tests and set by the benchmark.
 export function makeWorld({ apnsKey, latency = {} } = {}) {
   const wait = (kind) => sleep(latency[kind] || 0);
-  const counts = { kvGet: 0, kvPut: 0, kvDelete: 0, fetchGoogleToken: 0, fetchGmail: 0, fetchPeople: 0, fetchApns: 0, hubCalls: 0, sign: 0, importKey: 0 };
+  const counts = { kvGet: 0, kvPut: 0, kvDelete: 0, fetchGoogleToken: 0, fetchGmail: 0, fetchPeople: 0, fetchApns: 0, hubCalls: 0, sign: 0, importKey: 0, fetchMicrosoftToken: 0, fetchGraph: 0 };
   const seen = [];
+  // Every call the relay makes to Outlook, in order, as "METHOD /path?query" (the query decoded).
+  const graphCalls = [];
+  // Calls that arrived with a sign-in token from the wrong company. There should never be any.
+  const refused = [];
   const started = performance.now();
   const marks = {};
   const mark = (name) => {
@@ -64,6 +68,102 @@ export function makeWorld({ apnsKey, latency = {} } = {}) {
     return mailboxes.get(email);
   };
   const tokens = new Map(); // access token -> email
+  const microsoftTokens = new Map(); // the same, for Outlook; a token from one side is no good on the other
+
+  // Outlook's side: what each mailbox holds. `contacts: null` is a sign-in from before the app asked to see them.
+  const outlooks = new Map();
+  const outlook = (email) => {
+    if (!outlooks.has(email)) outlooks.set(email, { messages: new Map(), subscriptions: new Map(), ended: [], contacts: null, photos: new Map(), pageSize: 500, gone: new Set(), failPatches: 0, serial: 0, before: null });
+    return outlooks.get(email);
+  };
+  const FOLDERS = { inbox: "folder-inbox", archive: "folder-archive" };
+  const pick = (message, select) => (select ? Object.fromEntries(select.split(",").filter((field) => field in message).map((field) => [field, message[field]])) : message);
+
+  async function fakeGraph(url, init, bearer) {
+    counts.fetchGraph++;
+    await wait("graph");
+    const method = init.method || "GET";
+    const path = decodeURIComponent(url.pathname.replace("/v1.0", ""));
+    const query = [...url.searchParams].map(([name, value]) => `${name}=${value}`).join("&");
+    graphCalls.push(`${method} ${path}${query ? `?${query}` : ""}`);
+    const email = microsoftTokens.get(bearer);
+    if (!email) {
+      refused.push(`${method} graph ${path}`);
+      return answer({ error: { message: "bad token" } }, 401);
+    }
+    const box = outlook(email);
+    if (box.before) await box.before(method, path, box);
+    const select = url.searchParams.get("$select");
+    const filter = url.searchParams.get("$filter") || "";
+    const top = Number(url.searchParams.get("$top") || 10);
+    const list = (messages) => answer({ value: messages.slice(0, top).map((message) => pick(message, select)) });
+    const body = init.body ? JSON.parse(init.body) : {};
+
+    if (path === "/subscriptions" && method === "POST") {
+      const id = `0000${++box.serial}-aaaa-4bbb-8ccc-${email.length.toString(16).padStart(12, "0")}`;
+      box.subscriptions.set(id, body);
+      return answer({ id, expirationDateTime: body.expirationDateTime }, 201);
+    }
+    const subscription = path.match(/^\/subscriptions\/([^/]+)$/);
+    if (subscription && method === "PATCH") {
+      if (!box.subscriptions.has(subscription[1])) return answer({ error: { message: "no such subscription" } }, 404);
+      Object.assign(box.subscriptions.get(subscription[1]), body);
+      return answer({ id: subscription[1], ...body });
+    }
+    if (subscription && method === "DELETE") {
+      box.ended.push(subscription[1]);
+      return new Response(null, { status: box.subscriptions.delete(subscription[1]) ? 204 : 404 });
+    }
+    const folder = path.match(/^\/me\/mailFolders\/(inbox|archive)$/);
+    if (folder) return answer({ id: FOLDERS[folder[1]] });
+    if (path === "/me/mailFolders/inbox/messages") {
+      const inbox = [...box.messages.values()].filter((message) => message.parentFolderId === FOLDERS.inbox);
+      const since = filter.match(/^receivedDateTime gt (\S+)$/);
+      if (since) return list(inbox.filter((message) => Date.parse(message.receivedDateTime) > Date.parse(since[1])).sort((a, b) => Date.parse(b.receivedDateTime) - Date.parse(a.receivedDateTime)));
+      if (filter === "isRead eq false") return list(inbox.filter((message) => !message.isRead));
+      return answer({ error: { message: `no stand-in for the filter ${filter}` } }, 400);
+    }
+    if (path === "/me/messages") {
+      const all = [...box.messages.values()];
+      if (filter === "categories/any()") return list(all.filter((message) => message.categories.length));
+      const conversation = filter.match(/^conversationId eq '(.*)'$/);
+      if (conversation) return list(all.filter((message) => message.conversationId === conversation[1].replace(/''/g, "'")));
+      // The real Outlook refuses anything cleverer inside any(), and so does this one.
+      return answer({ error: { message: `no stand-in for the filter ${filter}` } }, 400);
+    }
+    const move = path.match(/^\/me\/messages\/(.+)\/move$/);
+    if (move) {
+      const message = box.messages.get(move[1]);
+      if (!message || box.gone.has(move[1])) return answer({ error: { message: "not found" } }, 404);
+      message.parentFolderId = body.destinationId;
+      return answer(message, 201);
+    }
+    const one = path.match(/^\/me\/messages\/(.+)$/);
+    if (one && method === "PATCH") {
+      const message = box.messages.get(one[1]);
+      if (!message || box.gone.has(one[1])) return answer({ error: { message: "not found" } }, 404);
+      if (box.failPatches > 0) {
+        box.failPatches--;
+        return answer({ error: { message: "try later" } }, 503);
+      }
+      Object.assign(message, body);
+      return answer(message);
+    }
+    if (path === "/me/contacts") {
+      if (!box.contacts) return answer({ error: { message: "access denied" } }, 403);
+      const skip = Number(url.searchParams.get("$skip") || 0);
+      const size = Math.min(top, box.pageSize);
+      const page = { value: box.contacts.slice(skip, skip + size).map((contact) => pick(contact, select)) };
+      if (skip + size < box.contacts.length) page["@odata.nextLink"] = `https://graph.microsoft.com/v1.0/me/contacts?$select=${select}&$top=${top}&$skip=${skip + size}`;
+      return answer(page);
+    }
+    const photo = path.match(/^\/me\/contacts\/(.+)\/photo\/\$value$/);
+    if (photo) {
+      const bytes = box.contacts ? box.photos.get(photo[1]) : null;
+      return bytes ? new Response(bytes, { status: 200, headers: { "content-type": "image/jpeg" } }) : answer({ error: { message: "no picture" } }, 404);
+    }
+    return answer({ error: { message: `no stand-in for ${method} ${path}` } }, 500);
+  }
   let tokenSerial = 0;
   const deadDevices = new Set();
 
@@ -81,11 +181,21 @@ export function makeWorld({ apnsKey, latency = {} } = {}) {
       tokens.set(token, email);
       return answer({ access_token: token, expires_in: 3599 });
     }
+    if (url.host === "login.microsoftonline.com") {
+      counts.fetchMicrosoftToken++;
+      await wait("microsoft");
+      const form = new URLSearchParams(String(init.body));
+      const token = `outlook-access-${++tokenSerial}`;
+      microsoftTokens.set(token, form.get("refresh_token").replace(/^refresh-/, ""));
+      return answer({ access_token: token, expires_in: 3599 });
+    }
     const bearer = (headers.get("authorization") || "").replace(/^Bearer /, "");
+    if (url.host === "graph.microsoft.com") return fakeGraph(url, init, bearer);
     if (url.host === "gmail.googleapis.com") {
       counts.fetchGmail++;
       await wait("gmail");
       const email = tokens.get(bearer);
+      if (!email && microsoftTokens.has(bearer)) refused.push(`${init.method || "GET"} gmail ${url.pathname}`);
       if (!email) return answer({ error: { message: "bad token" } }, 401);
       const box = mailbox(email);
       const path = url.pathname.replace("/gmail/v1/users/me", "");
@@ -219,7 +329,7 @@ export function makeWorld({ apnsKey, latency = {} } = {}) {
     },
   };
 
-  const world = { counts, seen, kv, env, mailbox, deadDevices, listen, marks, startedAt: started };
+  const world = { counts, seen, kv, env, mailbox, outlook, graphCalls, refused, FOLDERS, deadDevices, listen, marks, startedAt: started };
 
   /// Loads the relay's code afresh, the way a newly started worker would: nothing remembered from before.
   world.start = async (path) => {
@@ -263,6 +373,21 @@ export function makeWorld({ apnsKey, latency = {} } = {}) {
     }
   };
 
+  /// One request whose answer is wanted whole (a picture, say). It is not written to `world.seen`.
+  world.open = async (method, path) => {
+    const pending = [];
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = fakeFetch;
+    try {
+      const response = await module.default.fetch(new Request(`https://relay.test${path}`, { method }), env, { waitUntil: (promise) => pending.push(promise) });
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      await Promise.all(pending);
+      return { status: response.status, headers: response.headers, bytes };
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  };
+
   /// What Google Pub/Sub posts when Gmail says a mailbox changed.
   world.pubsub = (email, historyId = world.mailbox(email).historyId) =>
     world.request("POST", `/pubsub/${env.RELAY_SECRET}`, { body: { message: { data: btoa(JSON.stringify({ emailAddress: email, historyId })), messageId: "1" } } });
@@ -282,6 +407,32 @@ export function makeWorld({ apnsKey, latency = {} } = {}) {
 
   world.register = (accounts, extra = {}) =>
     world.request("POST", "/register", { headers: { "x-mach-secret": env.RELAY_SECRET }, body: { accounts: accounts.map((email) => ({ email, refreshToken: `refresh-${email}`, clientId: "111-abc.apps.test" })), ...extra } });
+
+  /// An app signs an Outlook account in, the way `world.register` does a Gmail one.
+  world.registerOutlook = (accounts, extra = {}) =>
+    world.request("POST", "/register", { headers: { "x-mach-secret": env.RELAY_SECRET }, body: { accounts: accounts.map((email) => ({ email, provider: "microsoft", refreshToken: `refresh-${email}`, clientId: "outlook-client" })), ...extra } });
+
+  /// The watch Outlook holds for an account: its id, and the address and word it was told to use.
+  world.watchOf = (email) => {
+    const [id, made] = [...outlook(email).subscriptions].pop() || [];
+    return id ? { id, path: made.notificationUrl.replace("https://relay.test", ""), clientState: made.clientState, made } : null;
+  };
+
+  /// What Outlook posts when an inbox changed. By default it is the account's own watch speaking.
+  world.outlookSays = (email, { path = world.watchOf(email).path, clientState = world.watchOf(email).clientState, subscription = world.watchOf(email).id } = {}) =>
+    world.request("POST", path, { body: { value: [{ subscriptionId: subscription, clientState, changeType: "created", resource: "me/messages/x" }] } });
+
+  /// Mail in a made-up Outlook mailbox. New mail lands in the inbox a little in the future, so it is always
+  /// later than the moment the relay started looking; pass `received` and `folder` for mail that is already there.
+  let arrivals = 0;
+  world.deliverOutlook = (email, { id, conversation = `c-${id}`, name = "Ada Lovelace", address = "ada@example.com", subject = "Hello", preview = "A short and friendly note", read = false, draft = false, classification = "focused", categories = [], folder = "inbox", received = new Date(Date.now() + 60000 + ++arrivals * 1000).toISOString() }) => {
+    const message = { id, conversationId: conversation, subject, bodyPreview: preview, from: { emailAddress: { name, address } }, isRead: read, isDraft: draft, inferenceClassification: classification, categories, parentFolderId: FOLDERS[folder] || folder, receivedDateTime: received };
+    outlook(email).messages.set(id, message);
+    return message;
+  };
+
+  /// The relay's whole record of an account, as the store holds it.
+  world.account = (email) => (kv.has(`account:${email}`) ? JSON.parse(kv.get(`account:${email}`).value) : null);
 
   /// New mail lands in a made-up mailbox.
   world.deliver = (email, { id, thread = `t-${id}`, from = "Ada Lovelace <ada@example.com>", subject = "Hello", snippet = "A short &amp; friendly note", labels = ["INBOX", "UNREAD", "CATEGORY_PERSONAL"] }) => {

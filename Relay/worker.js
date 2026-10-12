@@ -289,6 +289,27 @@ async function hookWord(env, email) {
   return b64url(digest).slice(0, 40);
 }
 
+/// The word in the address of one saved contact's picture (see `photoFor`). It is made from the relay's secret,
+/// the account and that one contact, so an address opens that one picture and says nothing about anything else.
+async function photoWord(env, email, id) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${env.RELAY_SECRET} outlook picture ${email} ${id}`));
+  return b64url(digest).slice(0, 40);
+}
+
+/// The names Outlook knows the inbox and the archive by. They never change, so they are asked for once and kept
+/// on the account's record. Null when Outlook would not say.
+async function outlookFolders(env, account, kept) {
+  if (account.folders?.inbox && account.folders?.archive) return account.folders;
+  const [inbox, archive] = await Promise.all(["inbox", "archive"].map(async (name) => {
+    const response = await graph(env, account, `/me/mailFolders/${name}?$select=id`);
+    return response.ok ? (await response.json()).id || null : null;
+  }));
+  if (!inbox || !archive) return null;
+  account.folders = { inbox, archive };
+  await saveAccount(env, account, kept);
+  return account.folders;
+}
+
 /// Ends a watch Outlook still holds. Best effort: one that cannot be ended runs out by itself within a week.
 async function endWatch(env, account, id) {
   if (id) await graph(env, account, `/subscriptions/${id}`, { method: "DELETE" }).catch(() => {});
@@ -358,7 +379,7 @@ async function checkOutlook(env, account, kept, notified) {
       thread,
       senderEmail: address,
       senderName: name,
-      senderPhoto: "",
+      senderPhoto: await photoFor(env, account, address),
     };
     const collapse = await shortId(message.id);
     const reached = await Promise.all(devices.map((device) => push(env, device, { ...payload, aps: { ...payload.aps, ...badged(device) }, avatars: device.avatars !== false }, collapse, kept)));
@@ -453,7 +474,9 @@ async function unreadCount(env, account) {
   }
 }
 
-/// The sender's Google profile picture, from the account's own contacts, so the banner can show a real face.
+/// The sender's picture, from the account's own contacts, so the banner can show a real face. For Gmail it is the
+/// address of their Google profile picture. For Outlook it is an address on this relay that hands on the picture
+/// of that one saved contact (see `/photo` below); the picture itself is never kept here.
 /// The whole list is fetched once a day and kept; mail arriving in between costs nothing extra.
 // Kept in memory for ten minutes at a time, so a run of new mail reads and parses the (large) list once.
 const people = new Map();
@@ -463,7 +486,7 @@ async function photoFor(env, account, sender) {
     const held = people.get(account.email);
     let map = held && held.until > Date.now() ? await held.map : null;
     if (!map) {
-      const loading = loadPeople(env, account);
+      const loading = (isOutlook(account) ? loadContacts : loadPeople)(env, account);
       people.set(account.email, { map: loading, until: Date.now() + 600000 });
       try {
         map = await loading;
@@ -472,11 +495,35 @@ async function photoFor(env, account, sender) {
         throw error;
       }
     }
-    const url = map[sender];
-    return url ? url.replace("=s100", "=s192") : "";
+    const found = map[sender];
+    if (!found) return "";
+    if (!isOutlook(account)) return found.replace("=s100", "=s192");
+    if (!account.origin) return "";
+    return `${account.origin}/photo/${await photoWord(env, account.email, found)}?email=${encodeURIComponent(account.email)}&id=${encodeURIComponent(found)}`;
   } catch {
     return "";
   }
+}
+
+/// The same list for Outlook: which saved contact each address belongs to. No picture is fetched or kept here.
+async function loadContacts(env, account) {
+  const key = `contacts:${account.email}`;
+  let map = await env.STORE.get(key, "json");
+  if (map) return map;
+  map = {};
+  let next = "/me/contacts?$select=id,emailAddresses&$top=500";
+  for (let page = 0; next && page < 5; page++) {
+    const response = await graph(env, account, next);
+    if (!response.ok) break;
+    const data = await response.json();
+    for (const contact of data.value || []) {
+      for (const item of contact.emailAddresses || []) if (contact.id && item.address && !map[item.address.toLowerCase()]) map[item.address.toLowerCase()] = contact.id;
+    }
+    next = data["@odata.nextLink"] || "";
+  }
+  // An empty answer usually means the sign-in is from before the app asked to see contacts; ask again sooner.
+  await env.STORE.put(key, JSON.stringify(map), { expirationTtl: Object.keys(map).length ? 86400 : 3600 });
+  return map;
 }
 
 async function loadPeople(env, account) {
@@ -680,8 +727,8 @@ const SNOOZE_PREFIX = "Snoozed/";
 /// A snooze is a hidden Gmail label named "Snoozed/<time>"; this removes the label and puts the mail back, unread.
 async function wake(env, email, kept) {
   const account = await loadAccount(env, email, kept);
-  // An Outlook snooze is a category on the mail, which Outlook cannot be asked to list; the apps bring those back.
-  if (!account || isOutlook(account)) return;
+  if (!account) return;
+  if (isOutlook(account)) return wakeOutlook(env, account, kept);
   const listing = await gmail(env, account, "/labels");
   if (!listing.ok) return;
   const labels = (await listing.json()).labels || [];
@@ -720,6 +767,83 @@ async function wake(env, email, kept) {
   }
 }
 
+/// The same job as `wake`, for Outlook. A snooze there is a conversation moved out of the inbox into the archive,
+/// with a category named "Snoozed/<time>" on its newest message. One question a minute lists the mail that has any
+/// category at all (Outlook will not search categories by how their names begin); nothing more is asked unless one
+/// of them is a snooze that has come due.
+///
+/// An app that is awake may be bringing the same mail back at the same moment. So the conversation is read afresh
+/// first, only what is still in the archive is moved, and a message that has gone is not a failure.
+async function wakeOutlook(env, account, kept) {
+  const email = account.email;
+  const dueOn = (message) => (message.categories || []).filter((name) => {
+    if (!name.startsWith(SNOOZE_PREFIX)) return false;
+    const due = Date.parse(name.slice(SNOOZE_PREFIX.length));
+    return Number.isFinite(due) && due <= Date.now();
+  });
+  const listing = await graph(env, account, "/me/messages?$filter=categories/any()&$select=id,conversationId,categories&$top=100");
+  if (!listing.ok) return;
+  const marked = ((await listing.json()).value || []).filter((message) => message.conversationId && dueOn(message).length);
+  if (!marked.length) return;
+  const folders = await outlookFolders(env, account, kept);
+  if (!folders) return;
+  const mine = email.toLowerCase();
+  const done = new Set();
+  let woke = false;
+  for (const { conversationId: thread } of marked) {
+    if (done.has(thread)) continue;
+    done.add(thread);
+    const found = await graph(env, account, `/me/messages?$filter=conversationId%20eq%20'${encodeURIComponent(thread.replace(/'/g, "''"))}'&$select=id,parentFolderId,receivedDateTime,isRead,isDraft,categories,subject,from&$top=100`);
+    if (!found.ok) continue;
+    const messages = (await found.json()).value || [];
+    const carriers = messages.filter((message) => dueOn(message).length);
+    // No snooze left on it: an app got there first, and there is nothing to do or to say.
+    if (!carriers.length) continue;
+    let failed = false;
+    for (const message of messages) {
+      if (message.parentFolderId !== folders.archive) continue;
+      const moved = await graph(env, account, `/me/messages/${encodeURIComponent(message.id)}/move`, { method: "POST", body: JSON.stringify({ destinationId: folders.inbox }) });
+      if (!moved.ok && moved.status !== 404) failed = true;
+    }
+    // Anything that failed is tried again next minute; the category is still there to say so.
+    if (failed) continue;
+    // The newest mail someone else sent, of what is now in the inbox, is the one that comes back unread.
+    const back = messages.filter((message) => (message.parentFolderId === folders.archive || message.parentFolderId === folders.inbox) && !message.isDraft && (message.from?.emailAddress?.address || "").toLowerCase() !== mine)
+      .sort((a, b) => Date.parse(a.receivedDateTime) - Date.parse(b.receivedDateTime));
+    const newest = back.pop() || carriers[0];
+    let gone = false;
+    for (const message of new Set([newest, ...carriers])) {
+      const change = {};
+      if (message === newest && message.isRead !== false) change.isRead = false;
+      const due = dueOn(message);
+      if (due.length) change.categories = message.categories.filter((name) => !due.includes(name));
+      if (!Object.keys(change).length) continue;
+      const changed = await graph(env, account, `/me/messages/${encodeURIComponent(message.id)}`, { method: "PATCH", body: JSON.stringify(change) });
+      if (changed.status === 404) gone = gone || message === newest;
+      else if (!changed.ok) failed = true;
+    }
+    // A snooze that could not be taken off would be announced again next minute, so it is not announced now.
+    if (failed) continue;
+    woke = true;
+    if (gone || !account.devices?.length) continue;
+    const from = newest.from?.emailAddress || {};
+    const address = (from.address || "").toLowerCase();
+    const name = from.name || address.split("@")[0];
+    const payload = {
+      aps: {
+        alert: { title: name, subtitle: newest.subject || "", body: "Back in your inbox." },
+        sound: "default", "thread-id": `${email}/${thread}`, "content-available": 1, "mutable-content": 1,
+      },
+      account: email, thread,
+      senderEmail: address, senderName: name,
+      senderPhoto: await photoFor(env, account, address),
+    };
+    const collapse = await shortId(newest.id);
+    for (const device of account.devices) await push(env, device, { ...payload, avatars: device.avatars !== false }, collapse, kept);
+  }
+  if (woke) await announce(env, email);
+}
+
 /// Adds or refreshes one account's record. Runs inside the hub so it cannot interleave with a check.
 async function registerAccount(env, email, entry, kept) {
   const account = (await loadAccount(env, email, kept)) || { email, devices: [] };
@@ -728,7 +852,8 @@ async function registerAccount(env, email, entry, kept) {
   const switched = isOutlook(account);
   if (switched) {
     await endWatch(env, account, account.subscription);
-    for (const key of ["provider", "subscription", "since", "origin", "watchExpiry", "watchError"]) delete account[key];
+    for (const key of ["provider", "subscription", "since", "origin", "hook", "folders", "watchExpiry", "watchError"]) delete account[key];
+    people.delete(email);
   }
   const changed = switched || account.refreshToken !== entry.refreshToken || account.clientId !== entry.clientId
     || (account.allMail !== false) !== (entry.allMail !== false);
@@ -776,6 +901,7 @@ async function registerOutlook(env, account, entry, kept) {
     // The address was a Gmail account here: stop Gmail's notifications with the Google token before it is replaced.
     if (account.refreshToken) await gmail(env, account, "/stop", { method: "POST" }).catch(() => {});
     for (const key of ["historyId", "watchExpiry", "watchError"]) delete account[key];
+    people.delete(email);
     forgetToken(email);
     await env.STORE.delete(`token:${email}`);
   } else if (fresh) {
@@ -903,6 +1029,22 @@ export default {
       }
       // Always acknowledged, and quickly, or Outlook stops sending.
       return new Response(null, { status: 202 });
+    }
+    if (request.method === "GET" && url.pathname.startsWith("/photo/")) {
+      // The picture of one saved Outlook contact, for the banner of mail from them. The phone cannot ask Outlook
+      // itself without signing in, so this asks for it and hands it straight on; nothing of it is kept here.
+      const email = String(url.searchParams.get("email") || "").toLowerCase();
+      const id = url.searchParams.get("id") || "";
+      if (!email || !id || !safeEqual(url.pathname.slice(7), await photoWord(env, email, id))) return json({ error: "forbidden" }, 403);
+      try {
+        const account = await loadAccount(env, email);
+        const picture = account && isOutlook(account) ? await graph(env, account, `/me/contacts/${encodeURIComponent(id)}/photo/$value`) : null;
+        if (!picture || !picture.ok) return new Response(null, { status: 404 });
+        return new Response(picture.body, { status: 200, headers: { "content-type": picture.headers.get("content-type") || "image/jpeg", "cache-control": "private, max-age=86400" } });
+      } catch (error) {
+        console.log(`photo: ${error}`);
+        return new Response(null, { status: 404 });
+      }
     }
     if (request.method === "POST" && url.pathname === "/unregister") {
       if (!safeEqual(request.headers.get("x-mach-secret") || "", env.RELAY_SECRET)) return json({ error: "forbidden" }, 403);
