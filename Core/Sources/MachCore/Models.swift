@@ -58,20 +58,30 @@ public struct Account: Codable, FetchableRecord, PersistableRecord, Identifiable
     public var name: String
     public var historyId: String?
     public var sortOrder: Int
+    /// The signature the mail service keeps for the account, as HTML. Gmail has one in its settings; Outlook hands none out.
     public var signature: String
     /// The mail service the account is on, as `MailProvider` spells it.
     public var provider: String
+    /// The signature written in Mach's settings, as plain text. Empty means none was written here.
+    public var ownSignature: String
 
-    public init(id: String, name: String, historyId: String? = nil, sortOrder: Int = 0, signature: String = "", provider: MailProvider = .google) {
+    public init(id: String, name: String, historyId: String? = nil, sortOrder: Int = 0, signature: String = "", provider: MailProvider = .google,
+                ownSignature: String = "") {
         self.id = id
         self.name = name
         self.historyId = historyId
         self.sortOrder = sortOrder
         self.signature = signature
         self.provider = provider.rawValue
+        self.ownSignature = ownSignature
     }
 
     public var service: MailProvider { MailProvider(rawValue: provider) ?? .google }
+
+    /// What goes under outgoing mail: the signature written in Mach if there is one, else the mail service's own.
+    public var signatureHTML: String {
+        ownSignature.trimmed.isEmpty ? signature : HTMLText.fromPlain(ownSignature.trimmed)
+    }
 }
 
 public struct MailLabel: Codable, FetchableRecord, PersistableRecord, Hashable, Sendable {

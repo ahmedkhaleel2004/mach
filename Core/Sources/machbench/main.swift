@@ -49,6 +49,7 @@ guard directory.standardizedFileURL.path != real else {
 try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 let store = try Store(path: directory.appendingPathComponent("mail.sqlite").path)
 registerSyncBenchmarks(directory: directory)
+registerOutlookBenchmarks(directory: directory)
 
 if arguments[0] == "generate" {
     let count = arguments.count > 2 ? Int(arguments[2]) ?? 50_000 : 50_000

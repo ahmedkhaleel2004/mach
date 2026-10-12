@@ -753,6 +753,13 @@ struct AccountsView: View {
                             if let count = model.unread[account.id], count > 0 {
                                 Text("\(count) unread").font(.system(size: Theme.pt(12))).foregroundStyle(Theme.faint)
                             }
+                            if model.withoutContacts.contains(account.id) {
+                                // Signed in before contacts were asked for: one more sign-in adds them.
+                                Button("Sign in again for contacts and pictures") { model.signIn(.microsoft, again: account.id) }
+                                    .buttonStyle(.plain)
+                                    .font(.system(size: Theme.pt(12)))
+                                    .foregroundStyle(Theme.accent)
+                            }
                         }
                         Spacer()
                         Button("Sign out") { model.signOut(account.id) }
@@ -761,7 +768,8 @@ struct AccountsView: View {
                             .foregroundStyle(Theme.faint)
                     }
                     .padding(.horizontal, 14)
-                    .frame(height: Theme.pt(44))
+                    .padding(.vertical, model.withoutContacts.contains(account.id) ? 6 : 0)
+                    .frame(minHeight: Theme.pt(44))
                     .contentShape(Rectangle())
                     .onTapGesture {
                         model.overlay = nil
@@ -795,6 +803,20 @@ struct AccountsView: View {
                 .padding(14)
                 .contentShape(Rectangle())
                 .onTapGesture { model.setAvatars(!avatars) }
+                Rectangle().fill(Theme.line).frame(height: 1)
+                HStack {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Signature").font(.system(size: Theme.pt(14))).foregroundStyle(Theme.text)
+                        Text("Goes under the mail you send. One for each account.")
+                            .font(.system(size: Theme.pt(12))).foregroundStyle(Theme.faint)
+                    }
+                    Spacer()
+                    let written = model.accounts.contains { !$0.ownSignature.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                    Text(written ? "Edit" : "None").font(.system(size: Theme.pt(13), weight: .semibold)).foregroundStyle(written ? Theme.accent : Theme.faint)
+                }
+                .padding(14)
+                .contentShape(Rectangle())
+                .onTapGesture { model.overlay = .signature }
                 Rectangle().fill(Theme.line).frame(height: 1)
                 HStack {
                     VStack(alignment: .leading, spacing: 1) {
@@ -865,6 +887,63 @@ struct AccountsView: View {
                 Rectangle().fill(Theme.line).frame(height: 1)
                 AboutLinks(model: model, licenses: true).padding(.horizontal, 14).padding(.vertical, 10)
             }
+        }
+    }
+}
+
+/// Where each account's signature is written. Plain text, saved as it is typed.
+struct SignatureView: View {
+    let model: AppModel
+    @State private var texts: [String: String] = [:]
+
+    var body: some View {
+        OverlayCard(width: 420) {
+            ViewThatFits(in: .vertical) {
+                rows
+                ScrollView { rows }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .onAppear {
+            for account in model.accounts { texts[account.id] = account.ownSignature }
+        }
+    }
+
+    private var rows: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Signature").font(.system(size: Theme.pt(15), weight: .semibold)).foregroundStyle(Theme.text)
+                Spacer()
+                Button("Done") { model.overlay = .accounts }
+                    .buttonStyle(.plain)
+                    .font(.system(size: Theme.pt(13), weight: .semibold))
+                    .foregroundStyle(Theme.accent)
+            }
+            .padding(14)
+            ForEach(model.accounts) { account in
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(account.id).font(.system(size: Theme.pt(13))).foregroundStyle(Theme.dim)
+                    TextEditor(text: Binding(get: { texts[account.id] ?? "" }, set: { value in
+                        texts[account.id] = value
+                        model.setSignature(value, account: account.id)
+                    }))
+                    .font(.system(size: Theme.pt(14)))
+                    .foregroundStyle(Theme.text)
+                    .scrollContentBackground(.hidden)
+                    .frame(height: Theme.pt(64))
+                    .padding(6)
+                    .background(Theme.background, in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.line))
+                    #if os(iOS)
+                    .autocorrectionDisabled()
+                    #endif
+                }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 12)
+            }
+            Text("Leave one empty for no signature. An empty Gmail account uses the signature set in Gmail, if there is one.")
+                .font(.system(size: Theme.pt(12))).foregroundStyle(Theme.faint)
+                .padding(.horizontal, 14).padding(.bottom, 14)
         }
     }
 }
@@ -951,6 +1030,7 @@ struct OverlayLayer: View {
                     case .accounts: AccountsView(model: model)
                     case .more: MoreView(model: model)
                     case .profile: ProfileView(model: model)
+                    case .signature: SignatureView(model: model)
                     case .lists: EmptyView()
                     }
                 }

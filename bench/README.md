@@ -7,6 +7,8 @@ Everything here measures Mach without touching real mail or Gmail.
 - Never run a build against `~/Library/Application Support/Mach`. Benchmarks run on copies under `build/` (git-ignored).
 - Never kill, replace or signal the installed app. Stop a test app **by the process id you started**, never by name.
 - Never install on a phone, deploy the relay, push to a remote, or call Gmail. `MACH_OFFLINE=1` is set on every run.
+  The one exception is `bench/live/latency.py`, which is not run by anything else here: it times new mail reaching
+  the installed app on a real account, by sending that account mail from itself and removing it again.
 - Never put real subjects, senders or bodies in a commit, a log you keep, or a report. Numbers only.
 - Launch test apps in the background (`open -g -n`), so they do not take the keyboard. Keep them short-lived.
 
@@ -21,6 +23,8 @@ Everything here measures Mach without touching real mail or Gmail.
   parts with no screen (`measure(...)` prints the median and p90 as a JSON line).
 - `bench/sync/run.sh [synth|real] [signal|cpu|outbox|poll|first50|initial]` runs the sync benchmarks. Gmail is played
   by `Core/Sources/MachFake` (in memory, 120 ms per request, every request logged); results in `bench/results/sync.md`.
+- `bench/sync/run.sh synth outlook` is the same for Outlook, played by `Core/Sources/MachFake/FakeGraph.swift`; results in
+  `bench/results/outlook.md`.
 - `App/Shared/Bench.swift` (`DEBUG || BENCH` only): `Bench.record(metric, ms:)` appends to `bench.jsonl` in the data
   folder; `Bench.once(metric)` records time since process start.
 

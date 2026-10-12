@@ -211,6 +211,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     if let palette = Palette.all.first(where: { $0.id == command.dropFirst(6) }) { model.setPalette(palette) }
                 } else if command == "settings" {
                     model.overlay = model.overlay == .accounts ? nil : .accounts
+                } else if command == "signature" {
+                    model.overlay = model.overlay == .signature ? nil : .signature
+                } else if command == "nocontacts" {
+                    // As if the last account were an Outlook one signed in before contacts were asked for.
+                    if let last = model.accounts.last?.id { model.withoutContacts.insert(last) }
                 } else if command == "replydetails" {
                     model.replyDetailsRequest += 1
                 } else if command == "discardcompose" {

@@ -210,6 +210,8 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
                 model.setPalette(Palette.all[(index + 1) % Palette.all.count])
             case "settings": model.overlay = model.overlay == .accounts ? nil : .accounts
             case "licenses": model.overlay = model.overlay == .licenses ? nil : .licenses
+            case "signature": model.overlay = model.overlay == .signature ? nil : .signature
+            case "nocontacts": if let last = model.accounts.last?.id { model.withoutContacts.insert(last) }
             case "details": model.web.webView.evaluateJavaScript("document.querySelector('.msg.open .to').click()", completionHandler: nil)
             case "face": model.web.webView.evaluateJavaScript("document.querySelector('.face').click()", completionHandler: nil)
             case "style1", "style2", "style3": UserDefaults.standard.set(Int(String(key.last!)) ?? 1, forKey: "swipeStyle")
@@ -1060,7 +1062,7 @@ private struct ListRows: View {
                 .padding(.bottom, 90)
             }
             .scrollDismissesKeyboard(.immediately)
-            .refreshable { await model.service.syncAll() }
+            .refreshable { await model.service.syncAll(newMail: true) }
             // New mail while scrolled down: the rows on screen stay put.
             .onChange(of: rows.first?.id) { _, _ in swipe.holdPlace() }
             .onChange(of: rows.count) { _, _ in swipe.holdPlace() }

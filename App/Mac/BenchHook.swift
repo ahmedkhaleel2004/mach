@@ -343,6 +343,24 @@ final class BenchRunner {
             done()
         case "quit":
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { exit(0) }
+        case "picture":
+            // The window as the app itself draws it, saved to a file: needs no permission to watch the screen.
+            if let view = window?.contentView, let image = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
+                view.cacheDisplay(in: view.bounds, to: image)
+                try? image.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: rest))
+            }
+            done()
+        case "settings", "signature":
+            // For pictures of the two cards.
+            model.overlay = command == "settings" ? .accounts : .signature
+            done()
+        case "nocontacts":
+            // As if the last account were an Outlook one signed in before contacts were asked for.
+            if let last = model.accounts.last?.id { model.withoutContacts.insert(last) }
+            done()
+        case "signed":
+            if let first = model.accounts.first?.id { model.setSignature("Sam Rivera\nsent from Mach", account: first) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { done() }
         default:
             // One key a turn, the way real key presses arrive.
             press(command)

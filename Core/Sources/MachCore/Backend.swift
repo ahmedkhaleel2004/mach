@@ -65,6 +65,9 @@ protocol MailBackend: Sendable {
     func thread(_ id: String, background: Bool) async throws -> [Message]
     /// Throws an error with `isNotFound` when the cursor is too old to answer from.
     func changes(since cursor: String) async throws -> RemoteChanges
+    /// The newest mail in the inbox as it is this instant, in the shape of a change report, for a service whose
+    /// change list runs behind its mailbox. Nil when the change list is prompt, or before the first check.
+    func newestInbox(max: Int) async throws -> RemoteChanges?
     func attachment(messageId: String, attachmentId: String) async throws -> Data
 
     /// Returns the messages the change touched, when the service reports whole label lists (see `AccountSync`).
@@ -141,6 +144,9 @@ struct GmailBackend: MailBackend {
         } while pageToken != nil
         return result
     }
+
+    // Gmail's change log has new mail in it by the time Gmail says there is any.
+    func newestInbox(max: Int) async throws -> RemoteChanges? { nil }
 
     func attachment(messageId: String, attachmentId: String) async throws -> Data {
         try await api.attachment(messageId: messageId, attachmentId: attachmentId)

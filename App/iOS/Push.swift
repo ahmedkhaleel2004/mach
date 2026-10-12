@@ -29,7 +29,8 @@ final class PhoneDelegate: NSObject, UIApplicationDelegate {
         let start = (Bench.now(), LaunchBench.cpu())
         defer { Bench.record("push.silent", ms: Bench.now() - start.0, ["cpu": LaunchBench.cpu() - start.1, "sinceStart": Bench.sinceProcessStart()]) }
         #endif
-        await service.syncAll()
+        // A push means mail has just arrived (or was dealt with elsewhere): the inbox is looked at first.
+        await service.syncAll(newMail: true)
         await Self.tidy?()
         return .newData
     }

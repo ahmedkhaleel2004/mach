@@ -130,7 +130,7 @@ final class LiveLink: NSObject, URLSessionWebSocketDelegate, @unchecked Sendable
                     #if DEBUG
                     NSLog("live signal %@ relay-at %@", email, String(describing: object["at"] ?? ""))
                     #endif
-                    Task { await service.sync(for: email).sync() }
+                    Task { await service.sync(for: email).sync(newMail: true) }
                 }
                 self.listen(socket, generation: current)
             case .failure:

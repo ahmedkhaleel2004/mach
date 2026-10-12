@@ -101,6 +101,8 @@ public final class MailService: @unchecked Sendable {
     private var syncs: [String: AccountSync] = [:]
     private var authenticators: [String: Authenticator] = [:]
     private var people: [String: PeopleDirectory] = [:]
+    private var outlookPeople: [String: OutlookPeople] = [:]
+    private var withoutContacts = Set<String>()
     private let directory: URL
     /// Benchmarks run with this set: the local database is all there is, and nothing reaches the network.
     public let offline: Bool
@@ -115,6 +117,11 @@ public final class MailService: @unchecked Sendable {
     public var onNewMail: (@Sendable ([Message]) -> Void)?
     /// Called with the account when a pass over Gmail's changes has finished without an error.
     public var onSynced: (@Sendable (String) -> Void)?
+    /// Called with an Outlook account whose sign-in is from before contacts were asked for. Signing it in once
+    /// more is what gives it its contacts and their pictures; until then it works as before, without them.
+    public var onContactsDenied: (@Sendable (String) -> Void)?
+    /// The Outlook accounts found to be signed in without access to their contacts.
+    public var accountsWithoutContacts: Set<String> { lock.withLock { withoutContacts } }
     private var syncedFrom: [String: Date] = [:]
     /// When the last pass that finished began: everything stored for the account is at least that fresh.
     public func syncedFrom(account: String) -> Date? { lock.withLock { syncedFrom[account] } }
@@ -151,8 +158,12 @@ public final class MailService: @unchecked Sendable {
             }, synced: { [weak self] began in
                 guard let self else { return }
                 self.lock.withLock { self.syncedFrom[account] = began }
-                // Who the account knows, so a new message can be addressed to them. Asked of Google once a day.
-                if self.transport == nil, provider == .google { Task { await self.peopleDirectory(account).refresh() } }
+                // Who the account knows, so a new message can be addressed to them. Asked of the service once a day.
+                if provider == .microsoft {
+                    Task { await self.outlookDirectory(account).refresh() }
+                } else if self.transport == nil {
+                    Task { await self.peopleDirectory(account).refresh() }
+                }
                 self.onSynced?(account)
             })
             syncs[account] = created
@@ -185,6 +196,35 @@ public final class MailService: @unchecked Sendable {
             if let url = await peopleDirectory(account).photoURL(for: email) { return url }
         }
         return nil
+    }
+
+    /// A person's picture from an Outlook account: the one saved on your contact for them, or your own for one of
+    /// your own addresses. Outlook hands out no pictures of anyone else.
+    public func outlookPhoto(for email: String) async -> Data? {
+        guard !offline else { return nil }
+        let accounts = ((try? store.accounts()) ?? []).filter { $0.service == .microsoft }.map(\.id)
+        let ordered = accounts.filter { $0 == email.lowercased() } + accounts.filter { $0 != email.lowercased() }
+        for account in ordered {
+            if let data = await outlookDirectory(account).photo(for: email) { return data }
+        }
+        return nil
+    }
+
+    private func outlookDirectory(_ account: String) -> OutlookPeople {
+        lock.withLock {
+            if let existing = outlookPeople[account] { return existing }
+            let auth = authenticator(account, provider: .microsoft)
+            let created = OutlookPeople(account: account, api: GraphAPI(auth: auth, transport: transport), directory: self.directory, learned: { [weak self] known in
+                try? self?.store.saveKnownPeople(account: account, people: known)
+                self?.lock.withLock { _ = self?.withoutContacts.remove(account) }
+            }, denied: { [weak self] in
+                guard let self else { return }
+                self.lock.withLock { _ = self.withoutContacts.insert(account) }
+                self.onContactsDenied?(account)
+            })
+            outlookPeople[account] = created
+            return created
+        }
     }
 
     private func peopleDirectory(_ account: String) -> PeopleDirectory {
@@ -225,6 +265,8 @@ public final class MailService: @unchecked Sendable {
             syncs[email] = nil
             authenticators[email] = nil
             people[email] = nil
+            outlookPeople[email] = nil
+            withoutContacts.remove(email)
         }
         try? FileManager.default.removeItem(at: directory.appendingPathComponent("people-\(email).json"))
         let existing = try store.account(email)
@@ -271,6 +313,8 @@ public final class MailService: @unchecked Sendable {
         let running = lock.withLock {
             authenticators[id] = nil
             people[id] = nil
+            outlookPeople[id] = nil
+            withoutContacts.remove(id)
             return syncs.removeValue(forKey: id)
         }
         try? FileManager.default.removeItem(at: directory.appendingPathComponent("people-\(id).json"))
@@ -296,11 +340,12 @@ public final class MailService: @unchecked Sendable {
 
     // MARK: Syncing
 
-    public func syncAll() async {
+    /// `newMail`: see `AccountSync.sync(newMail:)`.
+    public func syncAll(newMail: Bool = false) async {
         guard !offline, let accounts = try? store.accounts() else { return }
         await withTaskGroup(of: Void.self) { group in
             for account in accounts {
-                group.addTask { await self.sync(for: account.id).sync() }
+                group.addTask { await self.sync(for: account.id).sync(newMail: newMail) }
             }
         }
     }
@@ -362,7 +407,7 @@ public final class MailService: @unchecked Sendable {
     public func send(_ draft: Draft, undoWindow: TimeInterval = 5) throws {
         let account = try store.account(draft.accountId)
         let from = EmailAddress(name: (try? store.senderName(account: draft.accountId)) ?? "", email: draft.accountId)
-        try store.queueSend(draft: draft, from: from, html: Composer.html(for: draft, signature: account?.signature ?? ""), delay: undoWindow)
+        try store.queueSend(draft: draft, from: from, html: Composer.html(for: draft, signature: account?.signatureHTML ?? ""), delay: undoWindow)
         if let threadId = draft.threadId {
             // Replying means you have dealt with it.
             modify(account: draft.accountId, threadIds: [threadId], remove: [SystemLabel.unread])

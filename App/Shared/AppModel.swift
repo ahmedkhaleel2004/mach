@@ -19,6 +19,7 @@ enum Overlay: Equatable {
     case more
     case lists
     case profile
+    case signature
 }
 
 /// What a swipe on a row does on iPhone. Each direction has its own setting.
@@ -171,6 +172,8 @@ final class AppModel {
     private(set) var webWarm = false
 
     var accounts: [Account] = []
+    /// Outlook accounts whose sign-in cannot read their contacts yet (see `contactsDenied`).
+    var withoutContacts: Set<String> = []
     /// The account on screen. Empty means every inbox together, which is the default.
     var accountId = ""
     var list = MailList.inbox
@@ -340,6 +343,10 @@ final class AppModel {
         self.service = service
         self.compact = compact
         AvatarStore.googleLookup = { email in await service.googlePhotoURL(for: email) }
+        AvatarStore.outlookLookup = { email in await service.outlookPhoto(for: email) }
+        service.onContactsDenied = { [weak self] account in
+            Task { @MainActor in self?.contactsDenied(account) }
+        }
         // The phone makes it here and now, as it always has.
         if compact { _ = web }
         // Brand logos are drawn by the conversation's web view, which is made on first need.
@@ -673,7 +680,7 @@ final class AppModel {
         } else {
             // The banner can arrive before this device has the message. Fetch, then open.
             Task {
-                await service.sync(for: account).sync()
+                await service.sync(for: account).sync(newMail: true)
                 if let thread = try? service.store.thread(account: account, id: threadId) { show(thread) }
             }
         }
@@ -1637,7 +1644,8 @@ final class AppModel {
         #endif
     }
 
-    func signIn(_ provider: MailProvider = .google) {
+    /// `again` is the address of an account that is already here and is being signed in once more.
+    func signIn(_ provider: MailProvider = .google, again: String? = nil) {
         // Pressing again starts over, so an abandoned browser tab never leaves the button dead.
         signInTask?.cancel()
         signingIn = provider
@@ -1645,10 +1653,10 @@ final class AppModel {
             do {
                 #if os(iOS)
                 let present = presentSignIn
-                let account = try await service.signIn(provider: provider) { url, scheme in try await present(url, scheme) }
+                let account = try await service.signIn(provider: provider, loginHint: again) { url, scheme in try await present(url, scheme) }
                 #else
                 let opener = openSignIn
-                let account = try await service.signIn(provider: provider) { url in
+                let account = try await service.signIn(provider: provider, loginHint: again) { url in
                     Task { @MainActor in opener(url) }
                 }
                 #endif
@@ -1656,6 +1664,7 @@ final class AppModel {
                 signInFinished()
                 signingIn = nil
                 overlay = nil
+                withoutContacts.remove(account.id)
                 AvatarStore.shared.forgetMisses()
                 accountsChanged()
                 switchAccount(account.id)
@@ -1670,7 +1679,24 @@ final class AppModel {
 
     func signOut(_ id: String) {
         try? service.removeAccount(id)
+        withoutContacts.remove(id)
         accountRemoved(id)
+    }
+
+    /// An Outlook account signed in before Mach asked for contacts has none to offer and no pictures. It is said
+    /// once, with the way to fix it; after that the account's row in settings carries the same offer.
+    private func contactsDenied(_ account: String) {
+        withoutContacts.insert(account)
+        let key = "contactsAsked-" + account
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        UserDefaults.standard.set(true, forKey: key)
+        show(Toast(text: "Sign in to Outlook once more to add your contacts and their pictures.", undo: { [weak self] in
+            self?.signIn(.microsoft, again: account)
+        }, action: "Sign in"))
+    }
+
+    func setSignature(_ text: String, account: String) {
+        try? service.store.setOwnSignature(text, account: account)
     }
 
     // MARK: - Messages to the person

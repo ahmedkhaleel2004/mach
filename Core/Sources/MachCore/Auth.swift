@@ -228,8 +228,11 @@ public enum OAuth {
         "https://www.googleapis.com/auth/userinfo.profile",
     ].joined(separator: " ")
 
-    /// What Mach asks Microsoft for: reading and changing mail, sending it, and the account's own name and address.
-    public static let microsoftScope = "offline_access User.Read Mail.ReadWrite Mail.Send"
+    /// What Mach asks Microsoft for: reading and changing mail, sending it, the account's own name and address, and
+    /// (read only) its contacts and the people it writes with, for addressing mail and for their pictures.
+    /// A sign-in made before the last two were asked for keeps working without them: asking for more when a
+    /// sign-in is renewed is refused outright, so that is never done (see `refreshForm`).
+    public static let microsoftScope = "offline_access User.Read Mail.ReadWrite Mail.Send Contacts.Read People.Read"
 
     public static func scope(for provider: MailProvider) -> String { provider == .google ? scope : microsoftScope }
 

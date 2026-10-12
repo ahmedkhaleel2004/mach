@@ -628,6 +628,17 @@ enum RestBench {
             model.overlay = nil
             await frames(4)
         }
+        // Settings as they look for an Outlook account signed in before contacts were asked for, and the signature card.
+        if let last = model.accounts.last?.id { model.withoutContacts.insert(last) }
+        model.overlay = .accounts
+        await frames(10)
+        await shot("overlay_accounts_contacts")
+        model.withoutContacts = []
+        model.overlay = .signature
+        await frames(10)
+        await shot("overlay_signature")
+        model.overlay = nil
+        await frames(4)
         model.openPalette()
         await wait(upTo: 1.5) { typing() != nil }
         await sleep(seconds: 1)

@@ -15,6 +15,8 @@ public actor AccountSync {
 
     private var syncTask: Task<Void, Never>?
     private var syncAgain = false
+    /// Set when the relay has just said this account has something new.
+    private var newMailSignalled = false
     private var flushing = false
     private var savingDrafts = false
     private var saveDraftsAgain = false
@@ -58,8 +60,11 @@ public actor AccountSync {
 
     /// One full pass: push local changes, then pull whatever changed on Gmail.
     /// If a pass is already running, this waits for it and makes it go round once more.
-    public func sync() async {
+    /// `newMail` says the service has just announced something new for this account: on a service whose change
+    /// list runs behind its mailbox, the inbox itself is then looked at first.
+    public func sync(newMail: Bool = false) async {
         guard !offline else { return }
+        if newMail { newMailSignalled = true }
         if let running = syncTask {
             syncAgain = true
             await running.value
@@ -75,6 +80,11 @@ public actor AccountSync {
         guard !stopped else { return }
         repeat {
             syncAgain = false
+            if newMailSignalled {
+                newMailSignalled = false
+                // Best effort: the pass that follows finds the same mail, only later.
+                try? await lookAtInbox()
+            }
             await flush()
             let began = Date()
             do {
@@ -165,9 +175,17 @@ public actor AccountSync {
         _ = try store.applyLabelChanges(account: accountId, changes: gone.map { .init(messageId: $0.id, add: [], remove: [label]) }, deleted: [])
     }
 
+    /// New mail, straight from the top of the inbox, for a service whose change list would only have it seconds later.
+    private func lookAtInbox() async throws {
+        guard try store.account(accountId)?.historyId != nil else { return }
+        let asked = Date()
+        guard let report = try await api.newestInbox(max: 10), !report.labels.isEmpty else { return }
+        try await apply(report, asked: asked, from: nil)
+    }
+
     private func incremental(from historyId: String) async throws {
         let asked = Date()
-        var report: RemoteChanges
+        let report: RemoteChanges
         do {
             report = try await api.changes(since: historyId)
         } catch let error as GmailError where error.isNotFound {
@@ -181,6 +199,12 @@ public actor AccountSync {
             if api.derivesLabels { syncAgain = true }
             return
         }
+        try await apply(report, asked: asked, from: historyId)
+    }
+
+    /// Takes in what the service reported: label changes, deletions, and the download of what is new.
+    /// `historyId` is the cursor the report was asked from, or nil for a report that moves no cursor.
+    private func apply(_ report: RemoteChanges, asked: Date, from historyId: String?) async throws {
         var changes = report.labels
         let deleted = report.deleted
         let added = report.added
@@ -216,7 +240,7 @@ public actor AccountSync {
         var seen = Set<String>()
         for id in added + unknown where !deletedSet.contains(id) && seen.insert(id).inserted { wanted.append(id) }
         try await download(wanted, urgent: true)
-        if let latest = report.cursor, latest != historyId { try store.setHistoryId(latest, account: accountId) }
+        if let latest = report.cursor, historyId != nil, latest != historyId { try store.setHistoryId(latest, account: accountId) }
         // New mail, and mail that came back to the inbox unread (a snooze ending on another device).
         let new = added + returned + (report.unknownAreNew ? unknown : [])
         let fresh = try store.notable(account: accountId, ids: new.filter { !deletedSet.contains($0) })
@@ -597,7 +621,7 @@ public actor AccountSync {
         return OutgoingMessage(
             from: EmailAddress(name: (try? store.senderName(account: accountId)) ?? "", email: accountId),
             to: EmailAddress.parseList(draft.to), cc: EmailAddress.parseList(draft.cc), bcc: EmailAddress.parseList(draft.bcc),
-            subject: draft.subject, text: Composer.text(for: draft), html: Composer.html(for: draft, signature: account?.signature ?? ""),
+            subject: draft.subject, text: Composer.text(for: draft), html: Composer.html(for: draft, signature: account?.signatureHTML ?? ""),
             inReplyTo: draft.inReplyTo, references: draft.refs, messageId: draft.outgoingMessageId, attachments: attachments)
     }
 

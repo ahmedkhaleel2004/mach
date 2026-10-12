@@ -120,7 +120,7 @@ final class OutlookTests: XCTestCase {
         XCTAssertEqual(url.path, "/common/oauth2/v2.0/authorize")
         let query = OAuth.callbackParameters(url)
         XCTAssertEqual(query["client_id"], "abc-123")
-        XCTAssertEqual(query["scope"], "offline_access User.Read Mail.ReadWrite Mail.Send")
+        XCTAssertEqual(query["scope"], "offline_access User.Read Mail.ReadWrite Mail.Send Contacts.Read People.Read")
         XCTAssertEqual(query["code_challenge_method"], "S256")
         XCTAssertEqual(query["redirect_uri"], "http://localhost:5000")
         XCTAssertEqual(OAuth.tokenAddress(.microsoft), "https://login.microsoftonline.com/common/oauth2/v2.0/token")

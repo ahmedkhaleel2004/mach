@@ -23,6 +23,9 @@ final class AvatarStore: @unchecked Sendable {
 
     /// Set by the app: asks Google for a person's profile picture. The notification extension has no such access.
     nonisolated(unsafe) static var googleLookup: (@Sendable (String) async -> URL?)?
+    /// Set by the app: asks Outlook for the picture saved on a contact, or the account's own. The bytes themselves,
+    /// because Outlook's pictures have no address anyone else can open.
+    nonisolated(unsafe) static var outlookLookup: (@Sendable (String) async -> Data?)?
 
     private let lock = NSLock()
     private var memory: [String: Data?] = [:]
@@ -184,6 +187,11 @@ final class AvatarStore: @unchecked Sendable {
         let isBrand = FileManager.default.fileExists(atPath: brand.path)
         if !isBrand, let data = try? Data(contentsOf: file) { return data }
         if let google = await Self.googleLookup?(email), let data = await fetch(google.absoluteString), Self.isUsable(data) {
+            try? data.write(to: file, options: .atomic)
+            try? FileManager.default.removeItem(at: brand)
+            return data
+        }
+        if let data = await Self.outlookLookup?(email), data.count > 200, Self.isUsable(data) {
             try? data.write(to: file, options: .atomic)
             try? FileManager.default.removeItem(at: brand)
             return data

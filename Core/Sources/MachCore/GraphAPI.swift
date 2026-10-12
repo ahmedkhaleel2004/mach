@@ -96,7 +96,7 @@ struct MSUser: Decodable {
     let displayName: String?
 }
 
-private struct MSErrorBody: Decodable {
+struct MSErrorBody: Decodable {
     struct Inner: Decodable { let code: String?; let message: String? }
     let error: Inner?
 }
@@ -249,12 +249,50 @@ public final class GraphAPI: @unchecked Sendable {
     func me() async throws -> MSUser {
         try await get(MSUser.self, Self.url("/me", [("$select", "mail,userPrincipalName,displayName")]))
     }
+
+    /// One answer out of several asked for together. `status` is 0 when Outlook gave none for it.
+    struct Part: Sendable {
+        var status: Int
+        var body: Data
+
+        var ok: Bool { (200..<300).contains(status) }
+
+        func failure() -> GmailError {
+            let parsed = try? JSONDecoder().decode(MSErrorBody.self, from: body)
+            return GmailError(status: status, reason: parsed?.error?.code ?? "", message: parsed?.error?.message ?? "Outlook did not answer.", service: "Outlook")
+        }
+    }
+
+    /// The most reads Outlook takes in one round trip.
+    static let batchLimit = 20
+
+    /// Several reads in one round trip, `batchLimit` at most. The answers come back in the order asked; each one
+    /// succeeds or fails by itself, and a read that could not go along (an address somewhere else) is left unanswered.
+    func batch(_ urls: [URL], prefer: [String] = [], background: Bool = false) async throws -> [Part] {
+        let headers = ["Prefer": (["IdType=\"ImmutableId\""] + prefer).joined(separator: ", ")]
+        var requests: [[String: Any]] = []
+        for (index, url) in urls.enumerated() {
+            let address = url.absoluteString
+            guard address.hasPrefix(Self.base) else { continue }
+            requests.append(["id": String(index), "method": "GET", "url": String(address.dropFirst(Self.base.count)), "headers": headers])
+        }
+        var parts = [Part](repeating: Part(status: 0, body: Data()), count: urls.count)
+        guard !requests.isEmpty else { return parts }
+        let data = try await send("POST", Self.url("/$batch"), body: try JSONSerialization.data(withJSONObject: ["requests": requests]), background: background)
+        let answers = (try JSONSerialization.jsonObject(with: data) as? [String: Any])?["responses"] as? [[String: Any]] ?? []
+        for answer in answers {
+            guard let index = (answer["id"] as? String).flatMap({ Int($0) }), parts.indices.contains(index) else { continue }
+            let body = answer["body"].flatMap { JSONSerialization.isValidJSONObject($0) ? try? JSONSerialization.data(withJSONObject: $0) : nil }
+            parts[index] = Part(status: answer["status"] as? Int ?? 0, body: body ?? Data())
+        }
+        return parts
+    }
 }
 
 // MARK: - Folders
 
 /// The mailbox's folders and which label each one stands for.
-struct GraphFolders: Sendable {
+struct GraphFolders: Sendable, Equatable {
     /// Outlook's fixed folders, by the name Graph knows them under (`inbox`, `sentitems`, ...), to their ids.
     var wellKnown: [String: String] = [:]
     var names: [String: String] = [:]
@@ -303,7 +341,19 @@ final class GraphBackend: MailBackend, @unchecked Sendable {
 
     private let lock = NSLock()
     private var folders: GraphFolders?
+    /// Where the list of folders was last read up to: asking from there says whether a folder was made, renamed or removed.
+    private var folderLink: String?
     private var loadingFolders: Task<GraphFolders, Error>?
+    /// What the newest mail in the inbox was last reported as, so the same thing is not reported at every check.
+    private var newestSeen: [String: [String]] = [:]
+    /// Mail reported from the inbox itself that its change list has not spoken of yet, and when it was first seen.
+    private var unconfirmed: [String: Date] = [:]
+    /// Mail at the top of the inbox that a change list has spoken of, or that was looked at by itself.
+    private var confirmed = Set<String>()
+    /// How long the change list is given to speak of such mail before the mail is looked at again by itself.
+    nonisolated(unsafe) static var confirmWait: TimeInterval = 45
+    /// How much of the top of the inbox is read beside the change lists.
+    static let newestCount = 10
     /// Messages that came with a list, kept until they are asked for one by one.
     private var cache: [String: (message: Message, at: Date)] = [:]
     /// How long a message that came with a list may stand in for asking again. Long enough for the download that
@@ -341,26 +391,29 @@ final class GraphBackend: MailBackend, @unchecked Sendable {
 
     private func loadFolders() async throws -> GraphFolders {
         var result = GraphFolders()
+        let api = self.api
+        // Outlook's fixed folders, asked for by name in one round trip while the list of all folders is read.
+        async let fixed = api.batch(GraphFolders.fixed.map { GraphAPI.url("/me/mailFolders/\($0)", [("$select", "id")]) })
         // The change list of folders is the one call that returns every folder, nested ones included.
         var next: URL? = GraphAPI.url("/me/mailFolders/delta", [("$select", "displayName")])
+        var link: String?
         while let url = next {
             let page = try await api.get(MSPage<MSFolder>.self, url)
             for folder in page.value where folder.removed == nil { result.names[folder.id] = folder.displayName ?? "" }
             next = page.nextLink.flatMap(URL.init(string:))
+            if let found = page.deltaLink { link = found }
         }
-        let api = self.api
-        try await withThrowingTaskGroup(of: (String, String?).self) { group in
-            for name in GraphFolders.fixed {
-                group.addTask {
-                    do {
-                        return (name, try await api.get(MSFolder.self, GraphAPI.url("/me/mailFolders/\(name)", [("$select", "id")])).id)
-                    } catch let error as GmailError where error.isNotFound {
-                        return (name, nil)
-                    }
-                }
+        for (name, part) in zip(GraphFolders.fixed, try await fixed) {
+            if part.ok {
+                result.wellKnown[name] = try JSONDecoder().decode(MSFolder.self, from: part.body).id
+            } else if part.status != 404 {
+                // It did not go through with the others: asked for by itself, which waits and retries as needed.
+                do {
+                    result.wellKnown[name] = try await api.get(MSFolder.self, GraphAPI.url("/me/mailFolders/\(name)", [("$select", "id")])).id
+                } catch let error as GmailError where error.isNotFound {}
             }
-            for try await (name, id) in group { result.wellKnown[name] = id }
         }
+        lock.withLock { folderLink = link }
         return result
     }
 
@@ -524,47 +577,177 @@ final class GraphBackend: MailBackend, @unchecked Sendable {
 
     // MARK: Changes
 
-    /// Where each folder's change list was last read up to.
+    /// Where each folder's change list was last read up to, and the folders themselves, so a check after a launch
+    /// starts with everything it needs to know.
     struct Cursor: Codable {
         var folders: [String: String] = [:]
+        /// Where the list of folders was read up to.
+        var list: String?
+        var names: [String: String]?
+        var wellKnown: [String: String]?
+    }
+
+    /// The top of the inbox as it is this instant, lightly: Outlook's change lists run a few seconds behind the
+    /// mailbox, and the inbox itself does not.
+    private static func newestURL(max: Int) -> URL {
+        GraphAPI.url("/me/mailFolders/inbox/messages", [("$select", lightSelect), ("$orderby", "receivedDateTime desc"), ("$top", String(max))])
+    }
+
+    /// Adds what the top of the inbox shows that the change lists have not said: mail that just arrived, or that
+    /// was just marked. `spoken` is every message the change lists did speak of this time, whichever way.
+    private func note(newest: [MSMessage], spoken: Set<String>, folders: GraphFolders, into changes: inout RemoteChanges) {
+        let now = Date()
+        lock.withLock {
+            for id in spoken {
+                unconfirmed[id] = nil
+                // What the change list said may differ from what was last seen here; the next look says it again if so.
+                newestSeen[id] = nil
+            }
+            let listed = Set(newest.map(\.id))
+            confirmed = confirmed.union(spoken).intersection(listed)
+            newestSeen = newestSeen.filter { listed.contains($0.key) }
+            for item in newest where !spoken.contains(item.id) && folders.holds(item) {
+                let labels = Self.labels(for: item, folders: folders)
+                if newestSeen[item.id] == labels { continue }
+                if !confirmed.contains(item.id), unconfirmed[item.id] == nil { unconfirmed[item.id] = now }
+                newestSeen[item.id] = labels
+                changes.labels.append(.init(messageId: item.id, replace: labels, threadId: item.conversationId))
+                changes.wanted?.insert(item.id)
+            }
+        }
+    }
+
+    func newestInbox(max: Int) async throws -> RemoteChanges? {
+        // Before the first check there is nothing to be ahead of.
+        guard let folders = lock.withLock({ self.folders }) else { return nil }
+        let page = try await api.get(MSPage<MSMessage>.self, Self.newestURL(max: max))
+        var changes = RemoteChanges(wanted: [], unknownAreNew: true)
+        note(newest: page.value, spoken: [], folders: folders, into: &changes)
+        return changes
+    }
+
+    private struct FolderResult: Sendable {
+        var folder: String
+        var link: String?
+        var present: [MSMessage] = []
+        var removed: [String] = []
+        var first: Bool
+    }
+
+    /// Reads one folder's change list from `start` to its end. `first` is the first page when it is already here.
+    private func read(folder: String, start: URL, isFirst: Bool, first: MSPage<MSMessage>? = nil) async throws -> FolderResult {
+        var result = FolderResult(folder: folder, first: isFirst)
+        var page = first
+        var next: URL? = first == nil ? start : nil
+        while true {
+            if let url = next { page = try await api.get(MSPage<MSMessage>.self, url, prefer: ["odata.maxpagesize=500"], background: true) }
+            guard let current = page else { break }
+            for item in current.value {
+                if item.removed != nil { result.removed.append(item.id) } else { result.present.append(item) }
+            }
+            if let link = current.deltaLink { result.link = link }
+            next = current.nextLink.flatMap(URL.init(string:))
+            page = nil
+            if next == nil { break }
+        }
+        return result
     }
 
     func changes(since cursor: String) async throws -> RemoteChanges {
         var state = (try? JSONDecoder().decode(Cursor.self, from: Data(cursor.utf8))) ?? Cursor()
-        let folders = try await knownFolders(refresh: true)
-        let api = self.api
-        struct FolderResult: Sendable {
-            var folder: String
-            var link: String?
-            var present: [MSMessage] = []
-            var removed: [String] = []
-            var first: Bool
+        // The folders: as remembered, else as the cursor has them from before the launch, else asked for.
+        var folders: GraphFolders
+        if let held = lock.withLock({ self.folders }), let link = lock.withLock({ folderLink }) {
+            folders = held
+            state.list = link
+        } else if let names = state.names, let wellKnown = state.wellKnown, state.list != nil {
+            folders = GraphFolders(wellKnown: wellKnown, names: names)
+            lock.withLock {
+                self.folders = folders
+                folderLink = state.list
+            }
+        } else {
+            folders = try await knownFolders(refresh: true)
+            state.list = lock.withLock { folderLink }
         }
         let previous = state.folders
-        var results: [FolderResult] = []
-        try await withThrowingTaskGroup(of: FolderResult.self) { group in
-            for folder in folders.tracked {
-                group.addTask {
-                    var result = FolderResult(folder: folder, first: previous[folder] == nil)
-                    var next: URL? = previous[folder].flatMap(URL.init(string:))
-                        ?? GraphAPI.url("/me/mailFolders/\(GraphAPI.segment(folder))/messages/delta", [("$select", Self.lightSelect)])
-                    while let url = next {
-                        let page = try await api.get(MSPage<MSMessage>.self, url, prefer: ["odata.maxpagesize=500"], background: true)
-                        for item in page.value {
-                            if item.removed != nil { result.removed.append(item.id) } else { result.present.append(item) }
-                        }
-                        next = page.nextLink.flatMap(URL.init(string:))
-                        if let link = page.deltaLink { result.link = link }
+        func start(_ folder: String) -> URL {
+            previous[folder].flatMap(URL.init(string:))
+                ?? GraphAPI.url("/me/mailFolders/\(GraphAPI.segment(folder))/messages/delta", [("$select", Self.lightSelect)])
+        }
+        // One round trip asks everything: whether the folders changed, the top of the inbox, and every folder's
+        // change list (the inbox's first). A mailbox with more folders than fit goes in as few trips as it takes.
+        let inbox = folders.id("inbox")
+        var tracked = folders.tracked
+        if let inbox, let index = tracked.firstIndex(of: inbox) { tracked.swapAt(0, index) }
+        var asks: [URL] = [Self.newestURL(max: Self.newestCount)]
+        let listAsk = state.list.flatMap(URL.init(string:))
+        if let listAsk { asks.append(listAsk) }
+        let lead = asks.count
+        asks += tracked.map(start)
+        let api = self.api
+        var parts: [GraphAPI.Part] = []
+        do {
+            let chunks = stride(from: 0, to: asks.count, by: GraphAPI.batchLimit).map { Array(asks[$0..<min($0 + GraphAPI.batchLimit, asks.count)]) }
+            if chunks.count == 1 {
+                parts = try await api.batch(chunks[0], prefer: ["odata.maxpagesize=500"], background: true)
+            } else {
+                var answered = [[GraphAPI.Part]](repeating: [], count: chunks.count)
+                try await withThrowingTaskGroup(of: (Int, [GraphAPI.Part]).self) { group in
+                    for (index, chunk) in chunks.enumerated() {
+                        group.addTask { (index, try await api.batch(chunk, prefer: ["odata.maxpagesize=500"], background: true)) }
                     }
-                    return result
+                    for try await (index, answer) in group { answered[index] = answer }
+                }
+                parts = answered.flatMap { $0 }
+            }
+        } catch let error as GmailError where error.isPermanent {
+            // Outlook would not take them together. Each is then asked for by itself, below.
+            parts = [GraphAPI.Part](repeating: GraphAPI.Part(status: 0, body: Data()), count: asks.count)
+        }
+        func expired(_ error: GmailError) -> Bool { error.status == 410 || error.reason.lowercased().contains("syncstate") }
+
+        // The folder list: any change at all (rare) and it is read again whole.
+        var foldersChanged = listAsk == nil
+        if listAsk != nil {
+            let part = parts[1]
+            if part.ok, let page = try? JSONDecoder().decode(MSPage<MSFolder>.self, from: part.body) {
+                if !page.value.isEmpty || page.nextLink != nil { foldersChanged = true } else if let link = page.deltaLink {
+                    state.list = link
+                    lock.withLock { folderLink = link }
+                }
+            } else {
+                foldersChanged = true
+            }
+        }
+        if foldersChanged {
+            folders = try await knownFolders(refresh: true)
+            state.list = lock.withLock { folderLink }
+        }
+
+        var results: [FolderResult] = []
+        var late: [String] = folders.tracked.filter { !tracked.contains($0) }
+        do {
+            for (offset, folder) in tracked.enumerated() where folders.names[folder] != nil {
+                let part = parts[lead + offset]
+                if part.ok, let page = try? JSONDecoder().decode(MSPage<MSMessage>.self, from: part.body) {
+                    results.append(try await read(folder: folder, start: start(folder), isFirst: previous[folder] == nil, first: page))
+                } else if part.status == 410 || (part.status != 0 && expired(part.failure())) {
+                    throw part.failure()
+                } else {
+                    late.append(folder)
                 }
             }
-            do {
+            // Whatever did not come with the rest (a folder made a moment ago, an answer Outlook held back).
+            try await withThrowingTaskGroup(of: FolderResult.self) { group in
+                for folder in late {
+                    group.addTask { try await self.read(folder: folder, start: start(folder), isFirst: previous[folder] == nil) }
+                }
                 for try await result in group { results.append(result) }
-            } catch let error as GmailError where error.status == 410 || error.reason.lowercased().contains("syncstate") {
-                // Outlook forgot where this device had read up to. Reported as "too old", which makes sync compare the lists again.
-                throw GmailError(status: 404, reason: "cursorExpired", message: error.message, service: "Outlook")
             }
+        } catch let error as GmailError where expired(error) {
+            // Outlook forgot where this device had read up to. Reported as "too old", which makes sync compare the lists again.
+            throw GmailError(status: 404, reason: "cursorExpired", message: error.message, service: "Outlook")
         }
         var changes = RemoteChanges(wanted: [], unknownAreNew: true)
         var present = Set<String>()
@@ -581,9 +764,18 @@ final class GraphBackend: MailBackend, @unchecked Sendable {
         }
         for folder in state.folders.keys where folders.names[folder] == nil { state.folders[folder] = nil }
         // A message that left one folder was usually moved, and the folder it went to may not have said so yet.
-        // Each one is looked at before it is called deleted.
+        // Each one is looked at before it is called deleted. So is mail that was seen at the top of the inbox a
+        // while ago and that no change list has spoken of since: it may have been deleted in that moment.
         var seen = Set<String>()
-        let gone = results.flatMap(\.removed).filter { !present.contains($0) && seen.insert($0).inserted }
+        var gone = results.flatMap(\.removed).filter { !present.contains($0) && seen.insert($0).inserted }
+        let spoken = present.union(gone)
+        let now = Date()
+        let overdue = lock.withLock { unconfirmed.filter { now.timeIntervalSince($0.value) > Self.confirmWait && !spoken.contains($0.key) }.map(\.key) }
+        lock.withLock { for id in overdue { unconfirmed[id] = nil } }
+        gone += overdue.filter { seen.insert($0).inserted }
+        if parts[0].ok, let page = try? JSONDecoder().decode(MSPage<MSMessage>.self, from: parts[0].body) {
+            note(newest: page.value, spoken: spoken.union(overdue), folders: folders, into: &changes)
+        }
         try await withThrowingTaskGroup(of: (String, MSMessage?).self) { group in
             for id in gone {
                 group.addTask {
@@ -603,6 +795,8 @@ final class GraphBackend: MailBackend, @unchecked Sendable {
                 }
             }
         }
+        state.names = folders.names
+        state.wellKnown = folders.wellKnown
         changes.cursor = String(decoding: try JSONEncoder().encode(state), as: UTF8.self)
         return changes
     }

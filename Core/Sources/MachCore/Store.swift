@@ -115,6 +115,9 @@ public final class Store: @unchecked Sendable {
         migrator.registerMigration("outlook") { db in
             try db.execute(sql: "ALTER TABLE account ADD COLUMN provider TEXT NOT NULL DEFAULT 'google'")
         }
+        migrator.registerMigration("own-signature") { db in
+            try db.execute(sql: "ALTER TABLE account ADD COLUMN ownSignature TEXT NOT NULL DEFAULT ''")
+        }
         migrator.registerMigration("codes") { db in
             try db.execute(sql: """
                 ALTER TABLE message ADD COLUMN code TEXT;
@@ -245,6 +248,11 @@ public final class Store: @unchecked Sendable {
 
     public func saveAccount(_ account: Account) throws {
         try pool.write { try account.save($0) }
+    }
+
+    /// The signature written in Mach's own settings for an account. Empty means none of its own.
+    public func setOwnSignature(_ text: String, account: String) throws {
+        try pool.write { try $0.execute(sql: "UPDATE account SET ownSignature = ? WHERE id = ?", arguments: [text, account]) }
     }
 
     func setHistoryId(_ historyId: String?, account: String) throws {
