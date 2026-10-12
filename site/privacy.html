@@ -52,7 +52,7 @@
 
   <article>
     <h1>Privacy policy</h1>
-    <p class="meta">Mach, the mail app for Gmail and Outlook on Mac and iPhone · Ahmed Khaleel · Effective 11 October 2026</p>
+    <p class="meta">Mach, the mail app for Gmail and Outlook on Mac and iPhone · Ahmed Khaleel · Effective 12 October 2026</p>
 
     <p class="short">Mach runs on your Mac or iPhone and talks to Google or Microsoft directly from there. Your mail, your contacts' names, addresses and pictures, and your Google or Microsoft sign-in are kept on your device. The developer runs no server that receives any of it, and cannot see it.</p>
 
@@ -88,7 +88,7 @@
 
     <section id="microsoft-data">
       <h2><i>03</i>Microsoft data Mach uses, and why</h2>
-      <p>When you sign in with Microsoft (an Outlook, Hotmail or Microsoft 365 work or school account), Mach asks for four permissions. These are all of them, and each is used only for the feature beside it.</p>
+      <p>When you sign in with Microsoft (an Outlook, Hotmail or Live account), Mach asks for six permissions. These are all of them, and each is used only for the feature beside it.</p>
       <dl class="tbl">
         <div>
           <dt>Read and write access to your mail<code>Mail.ReadWrite</code></dt>
@@ -103,11 +103,19 @@
           <dd><b>What Mach reads:</b> your name and your address.<br><b>Why:</b> to know which account you signed in to.</dd>
         </div>
         <div>
+          <dt>Read your contacts<code>Contacts.Read</code></dt>
+          <dd><b>What Mach reads:</b> the names and email addresses of the contacts saved in your account, and the picture saved on a contact when mail from that person is shown.<br><b>Why:</b> to offer them when you address a message, and to show their picture beside their mail. Kept on your device.</dd>
+        </div>
+        <div>
+          <dt>Read your relevant people list<code>People.Read</code></dt>
+          <dd><b>What Mach reads:</b> the names and email addresses of the people you write with most, as Outlook lists them.<br><b>Why:</b> to offer them when you address a message. Kept on your device.</dd>
+        </div>
+        <div>
           <dt>Maintain access to data you have given it access to<code>offline_access</code></dt>
           <dd><b>What it does:</b> it lets Mach stay signed in, so you are not asked to sign in again each time. It gives access to nothing more.</dd>
         </div>
       </dl>
-      <p>Mach does not read your Microsoft contacts or your calendar. Mach uses Microsoft data only to provide the mail features you see in the app. It does not use it for advertising or to train AI or machine-learning models, it does not transfer it to anyone, and no human reads it.</p>
+      <p>Mach never changes your contacts, and it does not read your calendar. It reads the two lists about once a day. An account signed in before 12 October 2026 was not asked for the two contact permissions and Mach reads no contacts for it until you sign it in again; everything else works the same without them. A work or school account may not be able to sign in at all: Microsoft lets an organization refuse apps whose publisher it has not verified, and Mach's is not. Mach uses Microsoft data only to provide the mail features you see in the app. It does not use it for advertising or to train AI or machine-learning models, it does not transfer it to anyone, and no human reads it.</p>
     </section>
 
     <section id="where">

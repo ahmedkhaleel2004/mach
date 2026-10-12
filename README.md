@@ -46,7 +46,8 @@ Medians on a mailbox of 50,000 messages. Every number has a benchmark behind it 
   open email to go back. Everything follows your finger at 120 Hz and ticks when it takes.
 - **Sign-in codes, one tap.** A mail that carries a code shows it in its row and on its banner; tap it (or `⇧C`) and it is copied.
 - **Undo everything.** Archive, trash, snooze, and sending for five seconds.
-- **Real faces.** The sender's Google picture, or a company's certified logo, the way Gmail shows them. Tap to enlarge.
+- **Real faces.** The sender's Google picture, the picture on your Outlook contact for them, or a company's certified logo. Tap to enlarge.
+- **A signature for each account,** written in settings. A Gmail account without one uses the signature set in Gmail.
 - **Attachments you can see.** A preview on every file; a tap opens it in Quick Look.
 - **Search everything.** Instant on the device, with Gmail's own search folded in as you scroll. Best match, newest or oldest.
 - **Drafts and snoozes live on Gmail,** so they are on every device and in Gmail itself.
@@ -67,8 +68,11 @@ after a paid security review, which Mach has not been through yet.
    **People API**, and create an OAuth client of type **Desktop app**. Add yourself as a test user.
 2. Save the client's JSON as `~/Library/Application Support/Mach/OAuthClient.json` and open Mach.
 
-**Outlook** (outlook.com, hotmail.com, live.com, and work or school accounts) works out of the box: press
-**Sign in with Microsoft**. Mach ships with its own Microsoft app registration, whose id is not a secret. To use
+**Outlook** (outlook.com, hotmail.com, live.com) works out of the box: press **Sign in with Microsoft**. A work or
+school account usually does not: Microsoft lets an organization refuse apps from a publisher it has not verified,
+which Mach's is not (verifying needs a registered business), and a university tried on 2026-10-11 refused the
+sign-in. Such an account needs its organization's administrator to allow Mach, or an app registration of that
+organization's own. Mach ships with its own Microsoft app registration, whose id is not a secret. To use
 one of your own instead (accounts in any organization and personal accounts; a "Mobile and desktop" redirect of
 `http://localhost`, and `com.ahmedkhaleel.mach://oauth` for the iPhone), save `{"client_id": "<its id>"}` as
 `~/Library/Application Support/Mach/MicrosoftClient.json` (`App/Resources/MicrosoftClient.json` when building the
