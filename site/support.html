@@ -74,7 +74,10 @@
       <p class="q">For the same reason. Until Google's review is finished, the public download ships without a sign-in key, and you make one in your own Google Cloud project: about five minutes, once. The steps are in the <a href="https://github.com/ahmedkhaleel2004/mach#install">README</a>. One-click sign-in for everyone comes with the review.</p>
 
       <h3>Where is my mail kept? Can the developer see it?</h3>
-      <p class="q">On your device, in Mach's own database, and at Google or Microsoft where it always was. Mach talks to them directly. There is no Mach server, so the developer has no way to see your mail, your contacts or your sign-in.</p>
+      <p class="q">On your device, in Mach's own database, and at Google or Microsoft where it always was. Mach talks to them directly. No Mach server ever receives your mail, your contacts, your address or your sign-in, so the developer has no way to see them. (One small server tells iPhones about new Outlook mail; the next answer says what it holds.)</p>
+
+      <h3>How do notifications work on iPhone?</h3>
+      <p class="q"><b>Outlook:</b> a banner arrives within seconds of the mail, whether Mach is open or not. Your phone asks Outlook to tell a small server of Mach's when mail arrives, and that server tells your phone through Apple. The server is told no address, no sign-in and no mail: only a random id, a random secret and your phone's notification address, encrypted, kept until you sign the account out (or 15 days after you stop using Mach). The banner's sender and subject are fetched by the phone itself. If Mach has not been opened for about a week and no mail has come, open it once so Outlook keeps calling.<br><b>Gmail:</b> no server is involved at all. Mach checks when it is open and when iOS lets it in the background, so a Gmail banner can come minutes late. That changes when Google has finished reviewing Mach.<br>To stop them, turn notifications off for Mach in the iPhone's Settings, or sign the account out. Details in the <a href="/privacy#push">privacy policy</a>.</p>
 
       <h3>How do I remove everything Mach stored?</h3>
       <p class="q">Sign out of each account, then delete the app. On iPhone that removes everything. On a Mac a few folders stay behind in your Library; the <a href="/privacy#remove">privacy policy</a> lists them.</p>

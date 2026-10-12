@@ -64,3 +64,21 @@ bun test/smoke.js        # the worker in Cloudflare's own runtime on this machin
 ```
 
 `bun test/golden.js <old worker.js>` rewrites `test/golden.json` from a copy of the relay you trust; do that before a change, not after.
+
+## The public relay (`public.js`)
+
+What the App Store and TestFlight builds use, for Outlook accounts only. It is a different worker from the one above,
+with its own store and secrets, and it is built to be run for strangers: it is never given a sign-in, an email address
+or a word of mail.
+
+- The phone makes up a random id and secret per Outlook account and posts them with its Apple push address to
+  `POST /v1/register`. Then the phone itself asks Outlook to call `/v1/outlook/<id>` when unread mail reaches the inbox.
+- Outlook's call carries the secret and the new message's id. The relay checks the secret and pushes that id to the
+  phone, whose notification extension asks Outlook for the sender and subject and writes the banner.
+- Kept per account per phone: fingerprints of the id and of the secret, and the push address encrypted with `STORE_KEY`.
+  `POST /v1/forget` (sign-out) deletes it; so does Apple reporting the phone gone; otherwise it lapses after 15 days.
+- No shared secret: a record can only be refreshed or deleted with its own secret. Registrations are limited per
+  caller and pushes per mailbox.
+
+Deploy with `wrangler.public.toml` (a KV namespace, and the secrets `STORE_KEY`, `APNS_KEY`, `APNS_KEY_ID`,
+`APNS_TEAM_ID`). Tests: `bun test test/public.test.js`. Gmail has no counterpart here on purpose.

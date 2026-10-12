@@ -40,7 +40,7 @@
       <li><a href="#network"><i>05</i>What leaves your device</a></li>
       <li><a href="#never"><i>06</i>What Mach never does</a></li>
       <li><a href="#limited-use"><i>07</i>Google Limited Use</a></li>
-      <li><a href="#relay"><i>08</i>The optional relay</a></li>
+      <li><a href="#push"><i>08</i>Outlook notifications on iPhone</a></li>
       <li><a href="#security"><i>09</i>Security</a></li>
       <li><a href="#remove"><i>10</i>Removing your data</a></li>
       <li><a href="#children"><i>11</i>Children</a></li>
@@ -54,7 +54,7 @@
     <h1>Privacy policy</h1>
     <p class="meta">Mach, the mail app for Gmail and Outlook on Mac and iPhone · Ahmed Khaleel · Effective 12 October 2026</p>
 
-    <p class="short">Mach runs on your Mac or iPhone and talks to Google or Microsoft directly from there. Your mail, your contacts' names, addresses and pictures, and your Google or Microsoft sign-in are kept on your device. The developer runs no server that receives any of it, and cannot see it.</p>
+    <p class="short">Mach runs on your Mac or iPhone and talks to Google or Microsoft directly from there. Your mail, your contacts' names, addresses and pictures, and your Google or Microsoft sign-in are kept on your device. The developer runs no server that receives any of it, and cannot see it. One small server exists, for one thing: telling an iPhone that an Outlook account has new mail. It is told no address, no sign-in and no mail (<a href="#push">what it holds</a>).</p>
 
     <section id="who">
       <h2><i>01</i>Who is responsible</h2>
@@ -144,14 +144,14 @@
         <div><dt>Senders of your mail</dt><dd>Pictures, fonts and styling inside an email load from the sender's servers when you open it, as in most mail apps. That can tell a sender that you opened their message, roughly when, and your IP address. Mach has no switch to stop this yet. The system web view that draws the email keeps its own cache of what it loaded, and any cookies those servers set, on your device. Scripts in mail never run, and forms in mail cannot send.</dd></div>
         <div><dt>Links you click</dt><dd>Open in your browser, outside Mach.</dd></div>
         <div><dt>GitHub (Mac only)</dt><dd>The Mac app checks GitHub about once an hour for a new version and downloads it from there. It is a plain file download; GitHub sees your IP address as it would for any download. Nothing about you or your mail is sent.</dd></div>
-        <div><dt>Apple</dt><dd>On iPhone you get the app and its updates through Apple. In the published app, new-mail banners are made on the phone itself, so no mail passes through Apple's notification service.</dd></div>
+        <div><dt>Apple</dt><dd>On iPhone you get the app and its updates through Apple. A new-mail banner is written on the phone itself. For a Gmail account nothing passes through Apple's notification service at all. For an Outlook account a notification does, carrying one thing: the id Outlook gave the new message, which means nothing without your sign-in. The sender, subject and first words are fetched from Outlook by the phone and never pass through Apple or the developer.</dd></div>
       </dl>
     </section>
 
     <section id="never">
       <h2><i>06</i>What Mach never does</h2>
       <ul>
-        <li>No server of the developer's receives, stores or processes your mail, your contacts or your sign-in.</li>
+        <li>No server of the developer's receives, stores or processes your mail, your contacts, your address or your sign-in. The one server there is, for Outlook notifications on iPhone, is told none of them (<a href="#push">section 08</a>).</li>
         <li>No analytics, no usage tracking, no crash reporting service, no advertising, no third-party SDKs that collect data.</li>
         <li>Your data is not sold, rented, shared or transferred to anyone.</li>
         <li>Your Google data is not used to develop, improve or train AI or machine-learning models. Mach has no AI features.</li>
@@ -175,10 +175,19 @@
       <p>The use of information received from Google Workspace APIs will likewise adhere to the <a href="https://developers.google.com/workspace/workspace-api-user-data-developer-policy">Google Workspace API user data and developer policy</a>, including its Limited Use requirements.</p>
     </section>
 
-    <section id="relay">
-      <h2><i>08</i>The optional push relay: off, and not the developer's</h2>
-      <p>Mach's source includes a small program, the relay, that makes notifications arrive the instant mail does. <strong>It is not part of the published apps.</strong> The developer does not run one for the public, and the apps you download are not set up to use one. Without it the app checks for mail itself.</p>
-      <p>You can run a relay yourself, on your own Cloudflare account, and point your own copy of Mach at it by adding a settings file. If you do, your device sends your relay your Gmail or Outlook address, your Google or Microsoft sign-in token, the sign-in key your copy of Mach uses, and your iPhone's notification address; the relay then reads the sender, subject and first words of new mail, and your contacts' email addresses and picture addresses, and sends notifications through Apple's notification service. All of that is on a server you own and control. The developer has no access to it.</p>
+    <section id="push">
+      <h2><i>08</i>Notifications for Outlook on iPhone: the one server, and what it holds</h2>
+      <p>An iPhone can only be told about new mail through Apple's notification service, and something has to be awake to tell Apple. For Outlook accounts the developer runs one small server for that. It is built to know as little as it can.</p>
+      <dl class="tbl">
+        <div><dt>What your iPhone sends it</dt><dd>For each Outlook account: a random id and a random secret that the phone made up, and the phone's notification address (the token Apple gives an app so it can be sent notifications). <b>Not</b> your email address, your name, your Microsoft sign-in or anything from your mailbox.</dd></div>
+        <div><dt>What Outlook sends it</dt><dd>Your phone asks Outlook, with the sign-in that stays on the phone, to call the server when unread mail reaches your inbox. Each call carries the secret and the id Outlook gave the new message: a long string that says nothing about the mail and opens nothing without your sign-in. No sender, subject or text.</dd></div>
+        <div><dt>What it does</dt><dd>It checks the secret and sends your phone a notification carrying that message id. Your phone then asks Outlook itself for the sender, subject and first words, and writes the banner. The message id is passed on and not kept.</dd></div>
+        <div><dt>What it keeps</dt><dd>One record per Outlook account per phone: a fingerprint of the id, a fingerprint of the secret, and the notification address, encrypted. There is no list of people, and no record says whose it is.</dd></div>
+        <div><dt>For how long</dt><dd>Until you sign that account out in Mach, which deletes the record at once and tells Outlook to stop calling. If you delete the app instead, the record is deleted when Apple reports the phone gone, or by itself 15 days after Mach last ran, whichever is first; Outlook stops calling within a week.</dd></div>
+        <div><dt>Who can read it</dt><dd>Nobody else's phone: a record can only be changed or deleted by someone who has its secret, and there is no key shared between people. It runs on Cloudflare, which hosts it and, like any host, sees the connections made to it.</dd></div>
+      </dl>
+      <p><strong>Gmail accounts do not use this server or any other.</strong> Nothing of a Google account is sent to it. Mach finds new Gmail when it is open and when iOS lets it check in the background, and makes those banners on the phone, so they can arrive later than Outlook's.</p>
+      <p>The Mac app uses no server for either service. Mach's source also includes a second, fuller relay that a person can run for themselves on their own Cloudflare account; it is not part of the published apps and the developer does not run one for the public. If you run one, your device sends your relay your address, your sign-in token and your iPhone's notification address, and it reads the sender, subject and first words of new mail. All of that is on a server you own; the developer has no access to it.</p>
     </section>
 
     <section id="security">
@@ -197,7 +206,7 @@
     <section id="remove">
       <h2><i>10</i>Removing your data and Mach's access</h2>
       <ul>
-        <li><strong>Sign out.</strong> In Mach's settings, "Sign out" beside an account deletes that account's mail from Mach's database and its sign-in from the keychain.</li>
+        <li><strong>Sign out.</strong> In Mach's settings, "Sign out" beside an account deletes that account's mail from Mach's database and its sign-in from the keychain. For an Outlook account on iPhone it also deletes the record the notification server held and tells Outlook to stop calling it.</li>
         <li><strong>Take away Mach's access at Google.</strong> Open <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>, choose Mach and remove its access. From then on the sign-in on any device is worthless.</li>
         <li><strong>Take away Mach's access at Microsoft.</strong> For a personal account, open <a href="https://account.microsoft.com/privacy/app-access">account.microsoft.com/privacy/app-access</a>; for a work or school account, open <a href="https://myapps.microsoft.com">myapps.microsoft.com</a>. Choose Mach and remove its access.</li>
         <li><strong>Delete the app.</strong> On iPhone, deleting Mach removes everything it stored. On a Mac, sign out first, move Mach to the Trash, and to clear what is left delete <code>~/Library/Application Support/Mach</code>, the <code>avatars4</code>, <code>attachments</code> and <code>com.ahmedkhaleel.mach.mac</code> folders in <code>~/Library/Caches</code>, and the items named <code>com.ahmedkhaleel.mach.mac</code> in <code>~/Library/WebKit</code>, <code>~/Library/HTTPStorages</code> and <code>~/Library/Preferences</code>.</li>
