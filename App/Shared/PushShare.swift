@@ -64,11 +64,12 @@ enum PushShare {
 
     static func all() -> [PushWatch] {
         guard var query = query(nil) else { return [] }
-        query[kSecReturnData as String] = true
+        // The names first, then each record by its name: the keychain does not hand out many secrets in one answer.
+        query[kSecReturnAttributes as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitAll
         var found: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &found) == errSecSuccess, let items = found as? [Data] else { return [] }
-        return items.compactMap { try? JSONDecoder().decode(PushWatch.self, from: $0) }
+        guard SecItemCopyMatching(query as CFDictionary, &found) == errSecSuccess, let items = found as? [[String: Any]] else { return [] }
+        return items.compactMap { $0[kSecAttrAccount as String] as? String }.compactMap { find(id: $0) }
     }
 
     static func find(id: String) -> PushWatch? {
