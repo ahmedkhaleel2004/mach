@@ -98,7 +98,6 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
             return try await self.presentSignIn(url, scheme: scheme)
         }
         model.signInFinished = { [weak self] in self?.closeSignIn() }
-        Task { await Bootstrap.importSeed(into: model.service) }
         let notifier = Notifier(open: { [weak model] account, thread in
             model?.open(account: account, threadId: thread)
         }, isFrontmost: { UIApplication.shared.applicationState == .active })
@@ -114,10 +113,14 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
             PhoneDelegate.register()
             PhoneDelegate.live?.start()
         }
+        // An account that arrives this way has signed in like any other: it is asked about banners and gets its pushes.
+        Task { if await Bootstrap.importSeed(into: model.service) { model.accountsChanged() } }
+        #if STORE
+        model.accountRemoved = { email in Task { await PublicPush.shared.removed(email) } }
+        #else
         model.accountRemoved = { PhoneDelegate.live?.unregister($0) }
-        #if !STORE
-        if !Bootstrap.offline { UIApplication.shared.registerForRemoteNotifications() }
         #endif
+        if !Bootstrap.offline { UIApplication.shared.registerForRemoteNotifications() }
         // The number on the icon is the unread conversations in every inbox. Whenever the app runs (open, or woken
         // by a push) it sets the number itself from what it holds; in between, the relay's pushes carry it.
         if !Bootstrap.offline {
@@ -133,6 +136,10 @@ final class PhoneHost: NSObject, ASWebAuthenticationPresentationContextProviding
         model.service.onNewMail = { messages in
             if !relayed { notifier.announce(messages) }
         }
+        #if STORE
+        // An Outlook account's banner comes by push; the app's own is only put up if that one has not shown.
+        notifier.pushed = { PublicPush.covers($0) }
+        #endif
         notifier.follow(model.service)
         PhoneDelegate.tidy = { await notifier.tidy() }
         self.notifier = notifier

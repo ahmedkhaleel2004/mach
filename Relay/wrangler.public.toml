@@ -1,0 +1,16 @@
+# The public push relay (public.js): what the App Store and TestFlight builds register with, for Outlook accounts.
+# Separate from the personal relay (worker.js) in every way: its own worker, its own store, its own secrets.
+name = "mach-push"
+main = "public.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[[kv_namespaces]]
+binding = "STORE"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+[vars]
+BUNDLE_ID = "com.ahmedkhaleel.mach.ios"
+
+# Secrets, set with `wrangler secret put`: STORE_KEY (32 random bytes, base64: `openssl rand -base64 32`),
+# APNS_KEY (the .p8 text), APNS_KEY_ID, APNS_TEAM_ID

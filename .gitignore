@@ -14,3 +14,4 @@ App/iOS/Info-Store.plist
 App/NotifyExtension/Info.plist
 __pycache__/
 App/Resources/MicrosoftClient.json
+Relay/wrangler.public.local.toml

@@ -37,6 +37,9 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate, @unchecked Sen
         }
     }
 
+    /// Set where some accounts' banners arrive by push: true for an account whose new mail a push announces.
+    var pushed: (@Sendable (String) -> Bool)?
+
     private let lock = NSLock()
     private var service: MailService?
     private var ledger = BannerLedger()
@@ -60,6 +63,12 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate, @unchecked Sen
     }
 
     private func announce(_ message: Message) async {
+        let name = PushShare.bannerId(message.id)
+        if pushed?(message.accountId) == true {
+            // The push is on its way with the same mail. Its banner is given a moment to land; if it has, that is the one.
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            if await center.deliveredNotifications().contains(where: { $0.request.identifier == name }) { return }
+        }
         do {
             #if DEBUG
             NSLog("announcing %@ (permission %d)", message.subject, await center.notificationSettings().authorizationStatus.rawValue)
@@ -84,7 +93,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate, @unchecked Sen
                 }
             }
             // The same id as the push relay uses, so a message never shows twice.
-            try? await center.add(UNNotificationRequest(identifier: message.id, content: content, trigger: nil))
+            try? await center.add(UNNotificationRequest(identifier: name, content: content, trigger: nil))
         }
     }
 

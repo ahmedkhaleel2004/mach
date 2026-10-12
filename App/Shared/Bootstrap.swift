@@ -90,10 +90,12 @@ enum Bootstrap {
     /// A `seed.json` in the data folder is turned into signed-in accounts once and then deleted.
     /// It is a list of `{refreshToken, clientId?, clientSecret?, provider?}`; the key is only needed when the token
     /// was issued under a different Google project (or Microsoft app) than the app's own.
-    static func importSeed(into service: MailService) async {
-        guard !offline else { return }
+    /// Returns true when it signed an account in.
+    @discardableResult
+    static func importSeed(into service: MailService) async -> Bool {
+        guard !offline else { return false }
         let url = directory.appendingPathComponent("seed.json")
-        guard let data = try? Data(contentsOf: url) else { return }
+        guard let data = try? Data(contentsOf: url) else { return false }
         try? FileManager.default.removeItem(at: url)
         let seeds = (try? JSONDecoder().decode([Seed].self, from: data))
             ?? ((try? JSONDecoder().decode([String].self, from: data)) ?? []).map { Seed(refreshToken: $0) }
@@ -102,5 +104,6 @@ enum Bootstrap {
             _ = try? await service.addAccount(tokens: TokenSet(refreshToken: seed.refreshToken, client: client, provider: seed.provider.flatMap(MailProvider.init(rawValue:))))
         }
         AvatarStore.shared.forgetMisses()
+        return !seeds.isEmpty
     }
 }

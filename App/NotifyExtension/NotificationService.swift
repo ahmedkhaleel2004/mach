@@ -12,11 +12,60 @@ final class NotificationService: UNNotificationServiceExtension {
 
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
         handler = contentHandler
+        fallback = request.content
+        // The public relay's push names a message and says nothing about it: Outlook is asked here, on the phone.
+        if let mach = request.content.userInfo["mach"] as? [String: Any], let id = mach["id"] as? String, let message = mach["message"] as? String {
+            work = Task { [weak self] in
+                let filled = await Self.fill(request.content, watch: id, message: message)
+                guard !Task.isCancelled, let self else { return }
+                self.fallback = filled
+                self.decorate(Self.withCode(filled))
+            }
+            return
+        }
         let content = Self.withCode(request.content)
         fallback = content
+        decorate(content)
+    }
+
+    /// Reads the sender, subject and first words of one message from Outlook and writes them on the banner.
+    /// What it cannot learn it leaves as it came.
+    private static func fill(_ original: UNNotificationContent, watch id: String, message: String) async -> UNNotificationContent {
+        guard var watch = PushShare.find(id: id), let content = original.mutableCopy() as? UNMutableNotificationContent else { return original }
+        content.userInfo["account"] = watch.email
+        guard let token = await PushShare.accessToken(for: &watch) else { return content }
+        var allowed = CharacterSet.alphanumerics
+        allowed.insert(charactersIn: "-._~=")
+        let path = "/me/messages/\(message.addingPercentEncoding(withAllowedCharacters: allowed) ?? message)?$select=subject,bodyPreview,from,isRead,isDraft,conversationId,inferenceClassification"
+        let answer = await PushShare.outlook("GET", path, token: token)
+        guard answer.status == 200 else { return content }
+        let from = (answer.body["from"] as? [String: Any])?["emailAddress"] as? [String: Any]
+        let address = ((from?["address"] as? String) ?? "").lowercased()
+        let name = (from?["name"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? String(address.split(separator: "@").first ?? "")
+        let thread = (answer.body["conversationId"] as? String) ?? message
+        content.title = name.isEmpty ? "New mail" : name
+        content.subtitle = (answer.body["subject"] as? String) ?? ""
+        let preview = ((answer.body["bodyPreview"] as? String) ?? "").components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.joined(separator: " ")
+        content.body = preview.filter { !"\u{200b}\u{200c}\u{200d}\u{034f}\u{feff}\u{00ad}".contains($0) }
+        content.threadIdentifier = watch.email + "/" + thread
+        content.userInfo["thread"] = thread
+        content.userInfo["senderEmail"] = address
+        content.userInfo["senderName"] = name
+        // Mail that needs no announcing still has to be shown (a push cannot be taken back), so it arrives
+        // without a sound: already read, your own, or filed under "Other" with the inbox split.
+        let other = watch.quietOther == true && (answer.body["inferenceClassification"] as? String) == "other"
+        if (answer.body["isRead"] as? Bool) == true || address == watch.email || other {
+            content.sound = nil
+            content.interruptionLevel = .passive
+        }
+        return content
+    }
+
+    /// Puts the sender's picture on the banner and hands it to the system.
+    private func decorate(_ content: UNNotificationContent) {
         let info = content.userInfo
         guard info["avatars"] as? Bool ?? true, let email = info["senderEmail"] as? String, !email.isEmpty else {
-            contentHandler(content)
+            finish(content)
             return
         }
         let name = (info["senderName"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? email

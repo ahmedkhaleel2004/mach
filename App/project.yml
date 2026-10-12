@@ -5,12 +5,8 @@ options:
     macOS: "15.0"
     iOS: "18.0"
   createIntermediateGroups: true
-  # The App Store build's Info.plist is the iPhone's with everything that only a push uses taken out.
-  postGenCommand: >-
-    cp iOS/Info.plist iOS/Info-Store.plist &&
-    /usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" -c "Add :UIBackgroundModes array"
-    -c "Add :UIBackgroundModes:0 string fetch" -c "Delete :NSUserActivityTypes" iOS/Info-Store.plist
-# Store is what goes to TestFlight and the App Store (scripts/upload-testflight.sh): Release, with no push relay in it.
+# Store is what goes to TestFlight and the App Store (scripts/upload-testflight.sh): Release, with none of your own
+# relay in it. Its Outlook accounts get their pushes through the public relay (Relay/public.js).
 configs:
   Debug: debug
   Release: release
@@ -110,10 +106,6 @@ targets:
             echo "error: App/Resources/OAuthClient.json holds a client secret, which must never ship in an App Store build"
             exit 1
           fi
-          if [ -f "$SRCROOT/iOS/Info-Store.plist" ] && /usr/bin/grep -q "remote-notification" "$SRCROOT/iOS/Info-Store.plist"; then
-            echo "error: iOS/Info-Store.plist is stale. Run xcodegen generate again."
-            exit 1
-          fi
     info:
       path: iOS/Info.plist
       properties:
@@ -131,6 +123,8 @@ targets:
         # Without this an iPhone app is held to 60 frames a second even on a 120 Hz screen.
         CADisableMinimumFrameDurationOnPhone: true
         ITSAppUsesNonExemptEncryption: false
+        # The keychain group the app shares with its notification extension, spelled out for the code to read.
+        MachKeychainGroup: $(AppIdentifierPrefix)$(MACH_BUNDLE_BASE).shared
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(MACH_BUNDLE_BASE).ios
@@ -141,13 +135,12 @@ targets:
         ENABLE_USER_SCRIPT_SANDBOXING: NO
       configs:
         Store:
-          # No relay means no push: the phone checks when opened and in background refresh, and shows its own
-          # banners. So the App Store build asks for no push entitlement, has no remote-notification background
-          # mode, and leaves out the relay's address and the extension that only ever runs on a push.
+          # The App Store build carries none of your own relay: no address, no secret, none of the code that
+          # registers with it. Outlook accounts get pushes through the public relay, which is told nothing about
+          # them: the record the notification extension needs is kept in a keychain group the two share.
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) STORE
-          INFOPLIST_FILE: iOS/Info-Store.plist
-          CODE_SIGN_ENTITLEMENTS: ""
-          EXCLUDED_SOURCE_FILE_NAMES: PushRelay.json MachNotify.appex
+          CODE_SIGN_ENTITLEMENTS: iOS/Mach-Store.entitlements
+          EXCLUDED_SOURCE_FILE_NAMES: PushRelay.json
   MachNotify:
     type: app-extension
     platform: iOS
@@ -158,6 +151,8 @@ targets:
           - "*.entitlements"
       - path: Shared/AvatarStore.swift
       - path: Shared/BrandMark.swift
+      # The record of an Outlook account's push arrangement, and the few calls made with it.
+      - path: Shared/PushShare.swift
       # Finds the sign-in code in a pushed mail, so its banner can offer to copy it.
       - path: ../Core/Sources/MachCore/OneTimeCode.swift
     info:
@@ -166,6 +161,7 @@ targets:
         CFBundleDisplayName: Mach
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        MachKeychainGroup: $(AppIdentifierPrefix)$(MACH_BUNDLE_BASE).shared
         NSExtension:
           NSExtensionPointIdentifier: com.apple.usernotifications.service
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationService
@@ -175,3 +171,6 @@ targets:
         PRODUCT_NAME: MachNotify
         TARGETED_DEVICE_FAMILY: "1"
         SKIP_INSTALL: YES
+      configs:
+        Store:
+          CODE_SIGN_ENTITLEMENTS: NotifyExtension/MachNotify-Store.entitlements

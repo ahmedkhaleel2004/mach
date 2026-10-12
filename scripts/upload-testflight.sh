@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Archives the iPhone app the way it goes to the App Store (the Store configuration: no push relay, see
+# Archives the iPhone app the way it goes to the App Store (the Store configuration: none of your own relay, see
 # App/project.yml) and uploads it to App Store Connect, where it shows up in TestFlight.
 #
 #   scripts/upload-testflight.sh [version]        version defaults to the one in App/project.yml
@@ -70,10 +70,12 @@ fail() { echo "NOT uploading: $1" >&2; exit 1 }
 [[ -f "$app/OAuthClient.json" ]] || fail "the app has no Google key in it"
 ! grep -qi secret "$app/OAuthClient.json" || fail "a client secret is inside the app"
 [[ ! -e "$app/PushRelay.json" ]] || fail "the push relay's address is inside the app"
-[[ ! -d "$app/PlugIns" ]] || fail "the notification extension is inside the app"
+[[ -d "$app/PlugIns/MachNotify.appex" ]] || fail "the notification extension, which fills in an Outlook banner, is missing"
+! grep -rqi "x-mach-secret\|RELAY_SECRET" "$app/PushRelay.json" 2>/dev/null || fail "a relay secret is inside the app"
 [[ -f "$app/PrivacyInfo.xcprivacy" ]] || fail "the privacy manifest is missing"
 info=$(plutil -p "$app/Info.plist")
-[[ "$info" != *remote-notification* ]] || fail "the remote-notification background mode is still declared"
+[[ "$info" == *remote-notification* ]] || fail "the remote-notification background mode is missing"
+[[ "$info" == *MachKeychainGroup* && "$info" != *'"MachKeychainGroup" => ".'* ]] || fail "the keychain group shared with the extension is not spelled out"
 [[ "$info" != *'"NSAllowsArbitraryLoads" =>'* ]] || fail "every connection is exempt from App Transport Security"
 [[ "$info" != *NSLocalNetworkUsageDescription* ]] || fail "the local network is still asked for"
 [[ "$(plutil -extract CFBundleVersion raw -o - "$app/Info.plist")" == "$build" ]] || fail "the build number is not $build"
