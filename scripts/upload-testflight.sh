@@ -80,7 +80,11 @@ info=$(plutil -p "$app/Info.plist")
 [[ "$info" != *NSLocalNetworkUsageDescription* ]] || fail "the local network is still asked for"
 [[ "$(plutil -extract CFBundleVersion raw -o - "$app/Info.plist")" == "$build" ]] || fail "the build number is not $build"
 if [[ -z "${ARCHIVE_ONLY:-}" ]]; then
-  ! codesign -d --entitlements - --xml "$app" 2>/dev/null | grep -q aps-environment || fail "the app is signed for push"
+  # Outlook's banners need both: the right to be pushed to, and the keychain group the extension reads.
+  rights=$(codesign -d --entitlements - --xml "$app" 2>/dev/null)
+  [[ "$rights" == *aps-environment* ]] || fail "the app is not signed for push"
+  [[ "$rights" == *.shared* ]] || fail "the app cannot reach the keychain group it shares with the extension"
+  [[ "$(codesign -d --entitlements - --xml "$app/PlugIns/MachNotify.appex" 2>/dev/null)" == *.shared* ]] || fail "the extension cannot reach the shared keychain group"
 fi
 echo "    $(plutil -extract CFBundleShortVersionString raw -o - "$app/Info.plist") ($build), $(du -sh "$app" | cut -f1 | tr -d ' ')"
 
