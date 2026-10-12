@@ -134,7 +134,7 @@ all, so nothing about your account goes anywhere but Google, and it refuses to b
 - **`Relay/`** is an optional Cloudflare Worker that turns Gmail's "new mail" signal into an Apple push.
 - **`bench/`** holds the benchmarks and every result, including what did not get faster.
 
-The only Google permissions asked for are reading and changing mail, and reading contact pictures. Your mail stays on
+The only Google permissions asked for are reading and changing mail, and reading contacts' names, addresses and pictures. Your mail stays on
 your devices; nothing goes anywhere but Google (and your own relay, if you run one).
 
 ## Not done yet
