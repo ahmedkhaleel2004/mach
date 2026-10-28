@@ -54,6 +54,19 @@ final class AuthTests: XCTestCase {
         XCTAssertNil(OAuthClient.load(from: Data("not a key".utf8)))
     }
 
+    /// With several inboxes, "sign-in has expired" alone leaves the person guessing which one.
+    func testExpiredSignInNamesTheAccount() async {
+        XCTAssertEqual(AuthError.signedOut(.google, account: "a@gmail.com").localizedDescription,
+                       "Gmail sign-in for a@gmail.com has expired. Sign in again.")
+        XCTAssertEqual(AuthError.signedOut(.microsoft, account: "b@outlook.com").localizedDescription,
+                       "Outlook sign-in for b@outlook.com has expired. Sign in again.")
+        let auth = Authenticator(account: "c@gmail.com", client: OAuthClient(clientId: "x", clientSecret: nil),
+                                 store: FileTokenStore(directory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)))
+        do { _ = try await auth.accessToken(); XCTFail("no tokens saved, so no access") } catch {
+            XCTAssertEqual(error.localizedDescription, "The sign-in for c@gmail.com has expired. Sign in again.")
+        }
+    }
+
     func testPhoneRedirect() {
         XCTAssertEqual(phone.redirectScheme, "com.googleusercontent.apps.1234-abcd")
         XCTAssertEqual(OAuth.phoneRedirect(for: phone), "com.googleusercontent.apps.1234-abcd:/oauth2redirect")

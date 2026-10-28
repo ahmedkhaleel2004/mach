@@ -155,14 +155,13 @@ public struct FileTokenStore: TokenStore {
 }
 
 public enum AuthError: Error, LocalizedError {
-    case signedOut
-    case signedOutOf(MailProvider)
+    /// The account's sign-in is gone (revoked, or never saved); it names the address so the person knows which one.
+    case signedOut(MailProvider?, account: String)
     case failed(String)
 
     public var errorDescription: String? {
         switch self {
-        case .signedOut: return "Google sign-in has expired. Sign in again."
-        case .signedOutOf(let provider): return "\(provider.name) sign-in has expired. Sign in again."
+        case .signedOut(let provider, let account): return "\(provider?.name ?? "The") sign-in for \(account) has expired. Sign in again."
         case .failed(let message): return message
         }
     }
@@ -193,7 +192,7 @@ public actor Authenticator {
 
     public func accessToken(forceRefresh: Bool = false) async throws -> String {
         if let refreshing { return try await refreshing.value }
-        guard let current = tokens else { throw AuthError.signedOut }
+        guard let current = tokens else { throw AuthError.signedOut(nil, account: account) }
         if !forceRefresh, !current.accessToken.isEmpty, current.expiry.timeIntervalSinceNow > 90 {
             return current.accessToken
         }
@@ -207,7 +206,7 @@ public actor Authenticator {
         let provider = current.service
         let response = try await OAuth.postToken(OAuth.refreshForm(client: current.client ?? self.client, refreshToken: current.refreshToken), provider: provider)
         guard let access = response.access_token else {
-            if response.error == "invalid_grant" { throw provider == .google ? AuthError.signedOut : AuthError.signedOutOf(provider) }
+            if response.error == "invalid_grant" { throw AuthError.signedOut(provider, account: account) }
             throw AuthError.failed(response.error_description ?? response.error ?? "Could not refresh the \(provider.name) sign-in.")
         }
         // Microsoft hands out a new refresh token every time (the old ones keep working); the newest is kept.
